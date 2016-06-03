@@ -882,7 +882,7 @@ int check_current_file() {
             fclose(current_fp);
             remove(CURRENT_FILE);
             logger_debug("Current file found: %s", current_file);
-            capture_pid = pid_find(ODI_CAPTURE);
+            capture_pid = (int) pid_find(ODI_CAPTURE);
             return 1;
         }
     }
@@ -979,7 +979,7 @@ int ttymx_action(char *command) {
 	    {
 		logger_debug("%s:%d Sending SIGINT to gst_capture processes", __FUNCTION__, __LINE__);
                 system("killall -SIGINT gst_capture > /dev/null 2>&1");
-                capture_pid = pid_find(ODI_CAPTURE);
+                capture_pid = (int) pid_find(ODI_CAPTURE);
                 if (capture_pid == -1) 
 		{
                     logger_debug("Killall successful");
@@ -2272,7 +2272,7 @@ int main(int argc, char* argv[]) {
 		    //Restore default connection path DES_vs_CLOUD
 		    sleep(1);
 		} 
-		else if(pre_event > 0 && -1 == pid_find(ODI_CAPTURE)) 
+		else if(pre_event > 0 && -1 == (int) pid_find(ODI_CAPTURE)) 
 		{
 		    logger_info("Camera is undocked: launch gst_capture for pre-event time %d s", pre_event);
 		    time_t now = time(NULL);
@@ -2339,7 +2339,7 @@ power_log = 0;
  	    system("killall -s SIGINT gst_capture > /dev/null 2>&1");
             sleep(1);
             logger_info("Stop gst_capture in pre_event condition");
-	    if(pre_event_start_reset++ > 5 || -1 == pid_find(ODI_CAPTURE))
+	    if(pre_event_start_reset++ > 5 || -1 == (int) pid_find(ODI_CAPTURE))
 	    {
 		pre_event_started = 0;
 		pre_event_start_reset = 0;
