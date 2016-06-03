@@ -1031,7 +1031,7 @@ int ttymx_action(char *command) {
 	    //GHECU
 	    // Launch the pre_event first that do normal record
 #ifndef NOTUSE 
-            if(-1 == pid_find(ODI_CAPTURE))
+            if(-1 == (int) pid_find(ODI_CAPTURE))
 	    {
                 logger_info("Camera is undocked: launch gst_capture for pre-event time %d s", pre_event);
                 time_t now = time(NULL);
@@ -1044,8 +1044,7 @@ int ttymx_action(char *command) {
                 sleep(2);
                 //pre_event_recording = 1;
                 //pre_event_started = 1;
-	        int i;
-	        for(i=0; i<=3; i++)
+	        while(-1 == (int) pid_find(ODI_CAPTURE))
 	        {
 		    logger_info("Waiting for Pre_event ready: %d", i);
 	            sleep(1);
