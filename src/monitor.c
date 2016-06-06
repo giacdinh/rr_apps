@@ -317,7 +317,7 @@ void* serial_raw_read()
 	while (thread_run)
 	{
 		// for now just a test to setup long 5 seconds timeout
-		if (serial_raw_read_last == serial_raw_read_cur)
+		if (serial_raw_read_last = serial_raw_read_cur)
 		{
 			serial_raw_read_last = serial_raw_read_cur = 0;
 		}
