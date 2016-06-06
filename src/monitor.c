@@ -282,7 +282,7 @@ void *serial_raw_read() {
     logger_debug("serial read thread started");
     while (thread_run) {
         // for now just a test to setup long 5 seconds timeout
-        if( serial_raw_read_last = serial_raw_read_cur) {
+        if( serial_raw_read_last == serial_raw_read_cur) {
             serial_raw_read_last=serial_raw_read_cur=0;
         }
         if ((serial_port_fd > 0)) {
@@ -305,11 +305,11 @@ void *serial_raw_read() {
             while ( read_ptr[msg_start_ptr]!=0xff || read_ptr[msg_start_ptr+1]!=0xff
                     || read_ptr[msg_start_ptr+5]!=0x0d || read_ptr[msg_start_ptr+6]!=0x0a ) {
                 msg_start_ptr++; // look at next char
-               // if(msg_start_ptr >= COMM_BUFFER_SIZE) // reset to prevent buffer over run
-               // {
-               //     msg_start_ptr = 0;
-               //     break;
-               // }
+                if(msg_start_ptr >= COMM_BUFFER_SIZE) // reset to prevent buffer over run
+                {
+                    msg_start_ptr = 0;
+                    break;
+                }
 
                 if (curr_read_loc_ptr-msg_start_ptr<COMM_MESSAGE_SIZE ) {
                     continue;	// not enough chars for message, so go read again
