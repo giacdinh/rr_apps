@@ -952,6 +952,8 @@ int ttymx_action(char *command) {
     {
 	while(1) 
 	{
+	    if(-1 != (int) pid_find(ODI_CAPTURE))
+		break;
 	    if(mute_cmd_delay++ > 200)
 	    {
 		logger_error("MUF: Target process not running. Cannot send commands to any process");
