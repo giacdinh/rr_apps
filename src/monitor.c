@@ -49,19 +49,22 @@ static void file_write_log(char *level, char* str_log) {
 
     strftime(time_buf, 20, "%Y%m%d", localtime_r(&now, &ts));
 
-    bzero((char*)&pause_time_buffer[0], TIME_BUFFER_SIZE);
+    bzero((char *) &pause_time_buffer[0],TIME_BUFFER_SIZE);
 
     sprintf(fileName, "%s/%s_%s.log", ODI_LOG, ODI_STATUS_FILE, time_buf);
     FILE* fp = fopen(fileName, "a");
     strftime(time_buf, 17, "(%Y%m%d%H%M%S)", localtime_r(&now, &ts));
     if(0 == strcmp(level, "RMT"))
-        sprintf((char*)&pause_time_buffer[0], "%s RMT: %s \n", time_buf, str_log);
+        //sprintf(&pause_time_buffer[0], "%s RMT: %s \n", time_buf, str_log);
+        sprintf((char *) &pause_time_buffer[0], "%s RMT: %s \n", time_buf, str_log);
     else if(0 == strcmp(level, "CLD"))
-        sprintf((char*)&pause_time_buffer[0], "%s CLD: %s \n", time_buf, str_log);
+        //sprintf(&pause_time_buffer[0], "%s CLD: %s \n", time_buf, str_log);
+        sprintf((char *) &pause_time_buffer[0], "%s CLD: %s \n", time_buf, str_log);
     else
-        sprintf((char*)&pause_time_buffer[0], "%s MON: %s \n", time_buf, str_log);
+        //sprintf(&pause_time_buffer[0], "%s MON: %s \n", time_buf, str_log);
+        sprintf((char *) &pause_time_buffer[0], "%s MON: %s \n", time_buf, str_log);
 
-    fwrite((char*)&pause_time_buffer[0], strlen((char*)pause_time_buffer), 1, fp);
+    fwrite((char *) &pause_time_buffer[0], strlen((char *) &pause_time_buffer[0]), 1, fp);
     fclose(fp);
 }
 
@@ -365,7 +368,7 @@ void *serial_raw_read() {
                 logger_debug("Battery disconnected");
                 battery_level = 100;
             }
-            strcpy((char*)&battery_level_str[0], bat);
+            strcpy((char *) &battery_level_str[0], bat);
 
             if (cnt > 0) {
                 if ((serial_raw_read_cur + cnt) >
@@ -457,12 +460,12 @@ int get_operstate()
         logger_error("Failed to open operstate flag file");
         return -1;
     }
-    readbyte = read(fd, (char*)&flag_buf[0], 15);
+    readbyte = read(fd, (char *) &flag_buf[0], 15);
     if(readbyte > 0)
     {
-        if(strstr((char*)flag_buf, "up"))
+        if(strstr((char *) &flag_buf[0], "up"))
         {
-            logger_detailed("Ethernet PHY found. Start networking attempt");
+            logger_detailed("Ethernet PHY found. Start networking attemp");
             close(fd);
             ret_val = 1;
         }
@@ -541,12 +544,12 @@ int get_network_phy_state()
         //If unit ethernet state report in this case. Unit should reboot after 5 minute
         if(network_restart_timer == 0)
         {
-			logger_error("Ethernet flags mismatch. If not change system will reboot in 2 minute");
+            logger_info("Ethernet flags missmatch. If not change system will reboot in 2 minute");
             network_restart_timer = timeinfo.tm_hour * 100 + timeinfo.tm_min;
         }
         if((timeinfo.tm_hour * 100 + timeinfo.tm_min) - network_restart_timer > 2)
         {
-            logger_error("System reboot because of Ethernet flags mismatch");
+            logger_info("System reboot because of ethernet flags missmatch");
 //	    write_command_to_serial_port("RST\r\n");
 //	    sleep(1);
             system("reboot");
@@ -570,14 +573,14 @@ int get_network_phy_state()
 
 int process_eth0_carrier_state_change(int sent_udp) {
     int ip_abort;
-    int ret = 0;
-    static int eth_jack = 0, send_ETO;
+    static int eth_jack = 0, send_ETO = -1;
     int net_phy_state = get_network_phy_state() ;
+
     // Init ETO send flag
     if(send_ETO == -1 && net_phy_state == 1)
         send_ETO = 1;
 
-//DOCKED Handle case for pre_event send ETO to ignore REC switch
+    //DOCKED Handle case for pre_event send ETO to ignore REC switch
     if(net_phy_state == 1 && pre_event > 0)
     {
 //logger_info("===================> Camera docked");
@@ -598,17 +601,17 @@ int process_eth0_carrier_state_change(int sent_udp) {
 
     if (net_phy_state == 1 && net_up != 1)
     {
-        if (chargerON) 
-	{
-	    logger_info("%s:%d Sending SIGINT to gst_capture because eth0 came up", __FUNCTION__, __LINE__);
-	    system("killall -SIGINT gst_capture > /dev/null 2>&1");
-	    logger_info("EVENT RECORD STOP [ETH]");
-	    system("echo 2 > /odi/log/stopreason");
-	    chkXmlRdy = 1;
-	    recording = 0;
-	    capture_pid = -1;
-	    remove("/odi/log/recording");
-
+        if (chargerON) {
+            if (-1 != (int) pid_find(ODI_CAPTURE)) {
+                logger_info("Stopping recording because eth0 came up: %d",
+                            kill(capture_pid, SIGINT));
+                logger_info("EVENT RECORD STOP [ETH]");
+                system("echo 2 > /odi/log/stopreason");
+                chkXmlRdy = 1;
+                recording = 0;
+                capture_pid = -1;
+                remove("/odi/log/recording");
+            }
             write_command_to_serial_port("ETO\r\n");
             sleep(1);
             ack_eto = 1;
@@ -617,7 +620,7 @@ int process_eth0_carrier_state_change(int sent_udp) {
             sent_udp = 0;
 
             logger_info("Getting ethernet address when eth0 state change ...");
-            ip_address = (char*)getIP(&ip_abort);
+            ip_address = (char *)getIP(&ip_abort);
             if(ip_abort == -1)
             {
                 logger_info("Stop Get IP loop to improve device readiness");
@@ -702,7 +705,7 @@ int consume_and_intrepret_UART_data() {
             ttymx_action(command);
         } else {
 	    char malform[7];
-            memcpy((char*)&malform[0], serial_read_buf, 7);
+            memcpy((char *) &malform[0],serial_read_buf, 7);
             logger_error("Malformed command from UART: 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x", 
 			malform[0], malform[1], malform[2], malform[3],  malform[4], malform[5], malform[6]);
         }
@@ -778,14 +781,14 @@ char * get_battery_level_string() {
     write_command_to_serial_port("BAT\r\n");
     battery_level = -1;
     //Clear out level send string
-    bzero((char*)&battery_level_str[0], 16);
+    bzero((char *) &battery_level_str[0], 16);
     int i;
     for (i=0;i<10;i++) {
         //logger_debug("Waiting for battery level...");
         usleep(500000);
         if (battery_level != -1) break;
     }
-    return (char*)&battery_level_str[0];
+    return (char *) &battery_level_str[0];
 }
 
 int get_battery_level() {
@@ -805,28 +808,28 @@ int get_battery_level() {
 
 char *get_command(char *cmd) {
     logger_detailed("Entering: %s",__FUNCTION__);
-    bzero((char*)&command_str[0], 16);
+    bzero((char *) &command_str[0], 16);
     write_command_to_serial_port(cmd);
     sleep(1);
-    return (char*)&command_str[0];
+    return (char *)&command_str[0];
 }
 
 char *get_hw_version()
 {
     logger_detailed("Entering: %s",__FUNCTION__);
-    return (char*)&hw_version[0];
+    return (char *) &hw_version[0];
 }
 
 char *get_assignable()
 {
     logger_detailed("Entering: %s",__FUNCTION__);
-    return (char*)&assignable[0];
+    return (char *) &assignable[0];
 }
 
 char *get_dvr_name()
 {
     logger_detailed("Entering: %s",__FUNCTION__);
-    return (char*)&dvr_name[0];
+    return (char *) &dvr_name[0];
 }
 
 void set_dvr_name(char *s)
@@ -835,25 +838,22 @@ void set_dvr_name(char *s)
     strcpy(dvr_name, s);
 }
 
-void set_assignable(char* s)
+void set_assignable(char *s)
 {
     logger_detailed("Entering: %s",__FUNCTION__);
-	if (s)
-	{
-		strcpy(assignable, s);
-	}
+    strcpy(assignable, s);
 }
 
-//int available_minutes() {
-//    struct statvfs stat_buf;
-//    unsigned long long_free_blk;
-//    logger_detailed("Entering: %s",__FUNCTION__);
-//
-//    statvfs(ODI_DATA, &stat_buf);
-//    long_free_blk = stat_buf.f_bavail * stat_buf.f_bsize / 1024000;
-//    int minutes = (int)((float)long_free_blk / 35.0);
-//    //logger_debug("Disk space: %u, Minutes left: %d", long_free_blk, minutes);
-//}
+int available_minutes() {
+    struct statvfs stat_buf;
+    unsigned long long_free_blk;
+    logger_detailed("Entering: %s",__FUNCTION__);
+
+    statvfs(ODI_DATA, &stat_buf);
+    long_free_blk = stat_buf.f_bavail * stat_buf.f_bsize / 1024000;
+    int minutes = (int)((float)long_free_blk / 35.0);
+    //logger_debug("Disk space: %u, Minutes left: %d", long_free_blk, minutes);
+}
 
 int available_space() {
     logger_detailed("Entering: %s",__FUNCTION__);
@@ -871,18 +871,16 @@ int available_space() {
 
 int check_current_file() {
     int i;
-    for (i=0;i<8;i++) 
-	{
+    for (i=0;i<8;i++) {
         sleep(1);
         logger_info("Current file check..%d", i);
         FILE *current_fp = fopen(CURRENT_FILE, "r");
-        if (current_fp != NULL) 
-		{
+        if (current_fp != NULL) {
             fgets(current_file, 100, current_fp);
             fclose(current_fp);
             remove(CURRENT_FILE);
             logger_debug("Current file found: %s", current_file);
-            capture_pid = (int) pid_find(ODI_CAPTURE);
+            capture_pid = pid_find(ODI_CAPTURE);
             return 1;
         }
     }
@@ -900,19 +898,19 @@ void start_capture(int cause) {
     char cmd[256];
     sprintf(cmd, "GST_DEBUG_NO_COLOR=1 GST_DEBUG_FILE=/odi/log/gst_capture_%s.log GST_DEBUG=2 %s/%s >> %s/%s_%s 2>&1 &",
 	    ymd, ODI_BIN, ODI_CAPTURE, ODI_LOG, ODI_CAPTURE, ymd);
+
     system(cmd);
     logger_info("Capture command: %s", cmd);
 
+    capture_pid = -1;
     current_found = check_current_file();
-    if (!current_found) 
-	{
+    if (!current_found) {
         logger_error("%s:%d Current file not found, restarting gst_capture...", __FUNCTION__, __LINE__);
 		logger_info("%s:%d Sending SIGINT to gst_capture", __FUNCTION__, __LINE__);
         system("killall -SIGINT gst_capture > /dev/null 2>&1");
         system(cmd);
         current_found = check_current_file();
-        if (!current_found) 
-		{
+        if (-1 == (int) pid_find(ODI_CAPTURE) || !current_found) {
             logger_error("Restart failed, rebooting...");
             //write_command_to_serial_port("VID\r\n");
             //sleep(1);
@@ -930,42 +928,41 @@ void start_capture(int cause) {
 // returns 0 in case it encountered a valid command, returns -1 in case the command is invalid.
 // Note: returning 0 does not mean the command was executed correctly.
 int ttymx_action(char *command) {
-    int ret = 0;
     logger_detailed("Entering: %s",__FUNCTION__);
-    logger_info("TTYMX_ACTION command=%s", command);
+    logger_detailed("TTYMX_ACTION command=%s", command);
     static int mute_cmd_delay;
     mute_cmd_delay = 0; // Reset check use
     strcpy(command_str, command);
-    if (strcasecmp(command, "MUO") == 0) 
-    {
-	logger_info("%s:%d EVENT: Mute on, sending SIGRTMIN to gst_capture", __FUNCTION__, __LINE__);
-	system("killall -34 gst_capture > /dev/null 2>&1"); //MarcoM: SIGRTMIN = 34);
-	mute_on = 1;
-	if (write_command_to_serial_port("MUO\r\n")) 
-	{
-	    logger_error("Error writing ACK MUO to uC");
-	    return -1;
-	}
+    if (strcasecmp(command, "MUO") == 0) {
+        if (-1 == (int) pid_find(ODI_CAPTURE)) {
+            logger_error("MUO: Target process not running. Cannot send commands to any process");
+        } else {
+	    logger_info("%s:%d EVENT: Mute on, sending SIGRTMIN to gst_capture", __FUNCTION__, __LINE__);
+	    system("killall -34 gst_capture > /dev/null 2>&1"); //MarcoM: SIGRTMIN = 34);
+            mute_on = 1;
+            if (write_command_to_serial_port("MUO\r\n")) {
+                logger_error("Error writing ACK MUO to uC");
+                return -1;
+            }
+        }
         return 0;
-    } 
-    else if (strcasecmp(command, "MUF") == 0) 
-    {
-	while(1) 
-	{
-	    if(-1 != (int) pid_find(ODI_CAPTURE))
+    } else if (strcasecmp(command, "MUF") == 0) {
+	while(1) {
+	    if(-1 == (int) pid_find(ODI_CAPTURE)) // && RecSizeChkState != 0)
 		break;
 	    if(mute_cmd_delay++ > 200)
-	    {
-		logger_error("MUF: Target process not running. Cannot send commands to any process");
+            {
+                logger_error("MUF: Target process not running. Cannot send commands to any process");
 		return -1;
-	    } 
-	    usleep(50000);
-	}
-        logger_info("%s:%d EVENT: Mute off, sending SIGRTMIN+1 to gst_capture", __FUNCTION__, __LINE__);
-		system("killall -35 gst_capture > /dev/null 2>&1"); //MarcoM: SIGRTMIN + 1 = 35
+            }
+            usleep(50000);
+        }
         mute_on = 0;
-        if (write_command_to_serial_port("MUF\r\n")) 
-	{
+        logger_info("%s:%d EVENT: Mute off, sending SIGRTMIN+1 to gst_capture", __FUNCTION__, __LINE__);
+	system("killall -35 gst_capture > /dev/null 2>&1"); //MarcoM: SIGRTMIN + 1 = 35
+        mute_on = 0;
+
+        if (write_command_to_serial_port("MUF\r\n")) {
             logger_error("Error writing ACK MUF to uC");
             return -1;
         }
@@ -977,22 +974,15 @@ int ttymx_action(char *command) {
         // If Pre_event is on send SIGCONT, else do normal record
         if(pre_event == 0)
         {
-            if (!recording) 
-	    {
+            if (!recording) {
 		logger_debug("%s:%d Sending SIGINT to gst_capture processes", __FUNCTION__, __LINE__);
                 system("killall -SIGINT gst_capture > /dev/null 2>&1");
-                capture_pid = (int) pid_find(ODI_CAPTURE);
-                if (capture_pid == -1) 
-		{
+                if (-1 == (int) pid_find(ODI_CAPTURE)) {
                     logger_debug("Killall successful");
-                } 
-		else 
-		{
+                } else {
                     logger_error("Killall gst_capture failed!");
                 }
-            } 
-	    else 
-	    {
+            } else {
                 write_command_to_serial_port("RCO\r\n");
                 return; // Ignore extra RCO commands
             }
@@ -1030,12 +1020,11 @@ int ttymx_action(char *command) {
         if(pre_event > 0) 
 	{
 	    //Allow trigger on Charger with pre_event terminated
-	    //GHECU
 	    // Launch the pre_event first that do normal record
-#ifndef NOTUSE 
             if(-1 == (int) pid_find(ODI_CAPTURE))
 	    {
                 logger_info("Camera is undocked: launch gst_capture for pre-event time %d s", pre_event);
+		int i;
                 time_t now = time(NULL);
                 struct tm ts;
                 char ymd[20];
@@ -1052,22 +1041,17 @@ int ttymx_action(char *command) {
 	            sleep(1);
 	        }
 	    }
-#endif
 	    logger_info("%s:%d Start main record in pre_event case, sending SIGCONT to gst_capture", __FUNCTION__, __LINE__);
 	    system("killall -SIGCONT gst_capture > /dev/null 2>&1");
-        } 
-	else 
-	{
+        } else {
             start_capture(CAPTURE_BUTTON);
         }
 
-        if (capture_pid == -1 && pre_event == 0) //11958 Error log only apply for Hw 3 or less 
-	{
+        if (-1 == (int) pid_find(ODI_CAPTURE) && pre_event == 0) //11958 error log for HW < 4.0
+ 	{
             logger_error("RCO start recording failed.");
             //write_command_to_serial_port("VID\r\n");
-        } 
-	else 
-	{
+        } else {
             //write_command_to_serial_port("RCO\r\n");
             logger_debug("RCO sent, pid=%d", capture_pid);
         }
@@ -1077,14 +1061,15 @@ int ttymx_action(char *command) {
         RecSizeChkState = 1;                 // davis 01.06.2015
         return 0 ;
     } else if (strcasecmp(command, "RCF") == 0) {
-        logger_info("EVENT: RCF requested");
+        logger_info("EVENT: RCF requested: %d", (int) pid_find(ODI_CAPTURE));
         if (recording_counter < 100 && RecSizeChkState != 0) {
             logger_info("Stop too quick. recording counter: %d", recording_counter);
             return;
         }
         if (recording == 1) {
             // If Pre_event is on send SIGQUIT, else do normal record
-	    if(pre_event > 0) {
+            if(pre_event > 0)
+	    {
 	        if(chargerON == 0)
 	        {
 	            logger_info("%s:%d Sending SIGQUIT to gst_capture", __FUNCTION__, __LINE__);
@@ -1107,9 +1092,7 @@ int ttymx_action(char *command) {
         }
         // Reset capture pid only when not pre_event
         if(pre_event == 0)
-	{
             capture_pid = -1;
-	}
         strcpy(current_file, "");
         stealth_time_state_save = 0;
         recording = 0;
@@ -1131,13 +1114,14 @@ int ttymx_action(char *command) {
             write_command_to_serial_port("STF\r\n");
             stealth_on = 0;
         }
-//DOCKED Handle case for pre_event send ETO to ignore REC switch
+	//DOCKED Handle case for pre_event send ETO to ignore REC switch
         if(pre_event > 0)
         {
             camera_docked = 1;
 	    //If GHECU
             //write_command_to_serial_port("ETO\r\n");
         }
+
         // Remove recording stop when charge ON
         //        if (capture_pid != -1) {
         //            logger_info("EVENT RECORD STOP [CHO]");
@@ -1420,8 +1404,6 @@ int snap_trace_button() {
 int snap_trace_action(int gpio_state) {
     logger_detailed("Entering: %s",__FUNCTION__);
     int cstate = gpio_state;
-    int ret = 0;
-    
     if (cstate && !nstate101 && (snap_trace > 0 && snap_trace < 4)) {
         if (snap_trace == 1 || snap_trace == 3) {
             logger_info("Snap shot requested.");
@@ -1493,7 +1475,7 @@ int getField(ezxml_t xmlParent, char *fieldname, char *dest) {
     if (xmlChild != NULL) {
         char *szValue = xmlChild->txt;
         strcpy(dest, szValue);
-        //dest[strlen(szValue) + 1] = 0;
+        dest[strlen(szValue) + 1] = 0;
         return 0;
     }
     return -1;
@@ -1513,7 +1495,7 @@ int parseXML() {
         return -1;
     }
 
-    if (getField(xmlParent, (char*)"remotem_broadcast_ip", broadcast_ip)) {
+    if (getField(xmlParent, (char *)"remotem_broadcast_ip", broadcast_ip)) {
 //TODO put proper code to screen IPs field
 //        if (strlen(str) <= 15 && strlen(str) > 8) {
 //            strcpy(broadcast_ip, str);
@@ -1523,14 +1505,14 @@ int parseXML() {
 //        }
     }
 
-    if (getField(xmlParent, (char*)"snap_trace", str)) {
+    if (getField(xmlParent, (char *)"snap_trace", str)) {
         logger_error("Could not find snap_trace in config xml");
         ok = -1;
     } else {
         snap_trace = atoi(str);
     }
     //Get RCO buzzing
-    if (getField(xmlParent, (char*)"rec_buzz", str)) {
+    if (getField(xmlParent, (char *)"rec_buzz", str)) {
         logger_error("Could not find rec_buzz in config xml");
         ok = -1;
         RCO_buzz_enable = 0;  //Set as default
@@ -1541,7 +1523,7 @@ int parseXML() {
     logger_info("Buzzing enable = %d", RCO_buzz_enable);
 
     //Get RCO buzzing
-    if (getField(xmlParent, (char*)"rec_pre", str)) {
+    if (getField(xmlParent, (char *)"rec_pre", str)) {
         logger_error("Could not find rec_buzz in config xml");
         ok = -1;
         pre_event = 0;  //Set as default
@@ -1555,7 +1537,7 @@ int parseXML() {
     }
 
     //Get Mute On/Off control
-    if (getField(xmlParent, (char*)"mute_ctrl", str)) {
+    if (getField(xmlParent, (char *)"mute_ctrl", str)) {
         logger_error("Could not find mute_ctrl in config xml");
         ok = -1;
         mute_ctrl = 0;  //Set as default
@@ -1570,7 +1552,7 @@ int parseXML() {
     }
 
     //Get Assignable
-    if (getField(xmlParent, (char*)"usb_login", str)) {
+    if (getField(xmlParent, (char *)"usb_login", str)) {
         logger_error("Could not find usb_login in config xml");
         ok = -1;
         strcpy(assignable, "false");  //Set as default
@@ -1583,7 +1565,7 @@ int parseXML() {
     }
 
     //Get Dvr name
-    if (getField(xmlParent, (char*)"ops_carnum", str)) {
+    if (getField(xmlParent, (char *)"ops_carnum", str)) {
         logger_error("Could not find ops_carnum in config xml");
         ok = -1;
         strcpy(dvr_name, "No Number");  //Set as default
@@ -1597,8 +1579,8 @@ int parseXML() {
     }
 
     ezxml_free(xmlParent);
-    dvr_id = (char*)getSerial();
-    version_str =  (char*)getVersion();
+    dvr_id = (char *)getSerial();
+    version_str =  (char *)getVersion();
 
     return ok;
 }
@@ -1893,36 +1875,15 @@ void cloud_main_task()
     }
 }
 
-
-int find_gst_capture_pid()
-{
-    char buffer;
-    size_t bytes_read = 0;
-    int file_ptr = open("/var/run/gst_capture.pid", O_RDONLY);
-    if(file_ptr == -1)
-    {
-        logger_error("%s: Open file: gst_capture.pid", __FUNCTION__);
-        return -1;
-    }
-    bytes_read = read(file_ptr, &buffer, 1);
-    close(file_ptr);
-    if (bytes_read != 1) {
-        logger_error("Error reading bytes from gst_capture.pid");
-        return -1;
-    }
-
-    return (int) (0xFFFFFFFF & atoi(&buffer));
-
-}
-
 int main(int argc, char* argv[]) {
     int stealth_time_state;
     int snap_trace_state;
     int check_log_cnt = 0;
     int power_off_cnt = 0;
     int power_saver = 1;
-    int pre_event_record_ready = 0, find_pid;
+    int pre_event_record_ready = 0;
     int pre_event_started = -1;
+
     logger_detailed("Entering: %s",__FUNCTION__);
 
 #ifdef L_WATCHDOG
@@ -1991,8 +1952,8 @@ int main(int argc, char* argv[]) {
     }
     // Dump HW version to file /odi/log/hw_version.txt to use for upgrade protection
     char cmd_buf[128];
-    sprintf((char*)&cmd_buf[0], "echo \"%s \" > /odi/log/hw_version.txt", &hw_version);
-    system((char*)&cmd_buf[0]);
+    sprintf((char *) &cmd_buf[0], "echo \"%s \" > /odi/log/hw_version.txt", &hw_version);
+    system((char *) &cmd_buf[0]);
     //end of 10417
 
     // If restart from a plan b reboot, don't send BOP (resets stealth mode)
@@ -2105,9 +2066,7 @@ int main(int argc, char* argv[]) {
             cloud_main_task();
         }
         if(cloud_pid > 0)
-		{
             logger_info("App done fork cloud task");
-		}
     }
 
     if(sub_id == -1)
@@ -2166,20 +2125,20 @@ int main(int argc, char* argv[]) {
 
         // Stealth/Time button
         if (!snap_trace_state && stealth_time_action(stealth_time_state) < 0) {
-            logger_error("Could not successfully complete stealth_time_action action");
+            logger_error("Could not sucessfully complete stealth_time_action action");
         }
 
         snap_trace_state = snap_trace_button();
         if (stealth_time_state || snap_trace_state) power_off_cnt = 0;
 
 	// If trigger during charge with pre_event also try to increment recording counter
-
         if (!camera_docked || (camera_docked == 1 && recording == 1 && pre_event > 0)) {
+
             check_for_ACK();
 
             // Snap/Trace button
             if (recording && snap_trace && snap_trace_action(snap_trace_state) < 0) {
-                logger_error("Could not successfully complete snap_trace_action action");
+                logger_error("Could not sucessfully complete snap_trace_action action");
             }
 
             // Check space every minute
@@ -2290,17 +2249,8 @@ int main(int argc, char* argv[]) {
 		}
             }
             power_off_cnt = 0;
-        } 
 
-#ifndef NOT_USE
-static int power_log = 0;
-if(power_log++ == 100)
-{
-logger_info("stealth: %d recording: %d charger: %d chkXml: %d cam: %d pre: %d prestart: %d gstcap: %d",
-stealth_time_state,recording,chargerON,chkXmlRdy, camera_docked, pre_event, pre_event_started, find_pid);
-power_log = 0;
-}
-#endif
+        }
         if (!stealth_time_state && !recording && !chargerON && !chkXmlRdy)
             power_off_cnt++;
 
@@ -2314,7 +2264,7 @@ power_log = 0;
 
         if(access("/odi/log/rdylog", 0) == 0 && access("/odi/log/recording", 0) == 0)
         {
-	        if((pre_event_record_ready == 0) || (pre_event_record_ready == 1))
+	    if((pre_event_record_ready == 0) || ((pre_event_record_ready == 1 && 0 < (int) pid_find(ODI_CAPTURE))))
             {
                 logger_info("gst_capture stop while record button at ON position");
                 //Restart interrupted recording cause by Gstreamer IDF
@@ -2322,7 +2272,7 @@ power_log = 0;
                 write_command_to_serial_port("RCO\r\n");
                 sleep(1);
                 consume_and_intrepret_UART_data();
-                logger_info("restart recording after interruption");
+                logger_info("restart recording after interuption");
                 sleep(5);
                 parseXML();
                 start_capture(CAPTURE_REBOOT);
@@ -2333,6 +2283,8 @@ power_log = 0;
 	        }
         }
 
+        // Handling the starting of pre_event recording
+        //start pre_event only when no gst_capture running and unit undock
 	if(camera_docked == 1 && pre_event > 0 && pre_event_started == 1 && recording != 1)
 	{
 	    static int pre_event_start_reset = 0;
@@ -2353,11 +2305,11 @@ power_log = 0;
     }
     logger_info("Processing done...\n");
 
-	if (dvr_id)
-	{
-		free(dvr_id);
-		dvr_id = NULL;
-	}
+    if (dvr_id)
+    {
+	free(dvr_id);
+	dvr_id = NULL;
+    }
 
     if (reset_config_pressed) {
         write_command_to_serial_port("VID\r\n");
