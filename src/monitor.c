@@ -1061,7 +1061,7 @@ int ttymx_action(char *command) {
             start_capture(CAPTURE_BUTTON);
         }
 
-        if (capture_pid == -1) 
+        if (capture_pid == -1 && pre_event == 0) //11958 Error log only apply for Hw 3 or less 
 	{
             logger_error("RCO start recording failed.");
             //write_command_to_serial_port("VID\r\n");
