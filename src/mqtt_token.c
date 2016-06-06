@@ -60,16 +60,16 @@ static int GetToken_Response(void *ptr, size_t size, size_t nmemb, void *stream)
     //Check for error to prevent segmentation
     if(strstr(ptr, "error"))
     {
-	logger_cloud("Request return with error: %s", ptr);
-	mqtt_token_ret = BV_FAILURE;	
-        return NULL;	
+        logger_cloud("Request return with error: %s", ptr);
+        mqtt_token_ret = BV_FAILURE;
+        return NULL;
     }
 
-    tem = process_json_data((char *) ptr, "access_token", NULL);        
+    tem = process_json_data((char *) ptr, "access_token", NULL);
     memcpy((char *) &local_token, tem, strlen(tem));
     logger_cloud("mqtt main token: %s", (char *) &local_token);
 
-    tem = process_json_data((char *) ptr, "refresh_token", NULL);       
+    tem = process_json_data((char *) ptr, "refresh_token", NULL);
     memcpy((char *) &l_refresh_token, tem, strlen(tem));
     logger_cloud("mqtt refresh token: %s", (char *) &l_refresh_token);
 
@@ -80,12 +80,12 @@ static size_t GetToken_Header_Response(char *buffer, size_t size, size_t nitems,
 {
     if(strstr(buffer, "HTTP"))
     {
-	if(strstr(buffer, "200 OK"))
-	    mqtt_token_ret = BV_SUCCESS;
-	else
-	{
-	    mqtt_token_ret = BV_FAILURE;
-	}
+        if(strstr(buffer, "200 OK"))
+            mqtt_token_ret = BV_SUCCESS;
+        else
+        {
+            mqtt_token_ret = BV_FAILURE;
+        }
     }
     return nitems;
 }
@@ -94,7 +94,7 @@ extern char mqtt_main_token;
 extern char mqtt_refresh_token;
 
 int mqtt_token(char *user, char *pass)
-{   
+{
     CURL *curl;
     CURLcode res;
     struct curl_slist *headers = NULL;
@@ -107,27 +107,28 @@ int mqtt_token(char *user, char *pass)
     headers = curl_slist_append(headers, CLOUD_DEVICE);
     headers = curl_slist_append(headers, (char *) &Author);
 
-    /* In windows, this will init the winsock stuff */ 
+    /* In windows, this will init the winsock stuff */
     curl_global_init(CURL_GLOBAL_ALL);
- 
-    /* get a curl handle */ 
+
+    /* get a curl handle */
     curl = curl_easy_init();
-    if(curl) {
+    if(curl)
+    {
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, GetToken_Response);
         curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, GetToken_Header_Response);
- 
-	if(endpoint_url == 1)
-	{
-            curl_easy_setopt(curl, CURLOPT_URL, MQTT_TOKEN_URL_QA);
-	    curl_easy_setopt(curl, CURLOPT_CAPATH, "/odi/conf/m2mqtt_ca_qa.crt");
-	}
-	else
-	{
-            curl_easy_setopt(curl, CURLOPT_URL, MQTT_TOKEN_URL_PROD);
-	    curl_easy_setopt(curl, CURLOPT_CAPATH, "/odi/conf/m2mqtt_ca_prod.crt");
-	}
 
-	//Turn on RSA security
+        if(endpoint_url == 1)
+        {
+            curl_easy_setopt(curl, CURLOPT_URL, MQTT_TOKEN_URL_QA);
+            curl_easy_setopt(curl, CURLOPT_CAPATH, "/odi/conf/m2mqtt_ca_qa.crt");
+        }
+        else
+        {
+            curl_easy_setopt(curl, CURLOPT_URL, MQTT_TOKEN_URL_PROD);
+            curl_easy_setopt(curl, CURLOPT_CAPATH, "/odi/conf/m2mqtt_ca_prod.crt");
+        }
+
+        //Turn on RSA security
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, FALSE);
 //        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
@@ -135,30 +136,30 @@ int mqtt_token(char *user, char *pass)
         curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
 
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-	char tem[128];
-	bzero((char *) &tem, 128);
-        sprintf((char *) &tem, DATA_STR, user, pass); 
+        char tem[128];
+        bzero((char *) &tem, 128);
+        sprintf((char *) &tem, DATA_STR, user, pass);
 //	logger_cloud("Data: %s", (char *) &tem);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, tem);
-        
-        /* Now run off and do what you've been told! */ 
+
+        /* Now run off and do what you've been told! */
         res = curl_easy_perform(curl);
-        /* Check for errors */ 
+        /* Check for errors */
         if(res != CURLE_OK)
             logger_cloud("curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-    /* always cleanup */ 
+        /* always cleanup */
         curl_easy_cleanup(curl);
     }
     curl_global_cleanup();
-    memcpy(token, (char *) &local_token, 64); 
-    memcpy(refresh, (char *) &l_refresh_token, 64); 
+    memcpy(token, (char *) &local_token, 64);
+    memcpy(refresh, (char *) &l_refresh_token, 64);
 
     return mqtt_token_ret;
 }
 
 
 int mqtt_token_refresh( )
-{   
+{
     CURL *curl;
     CURLcode res;
     struct curl_slist *headers = NULL;
@@ -170,18 +171,19 @@ int mqtt_token_refresh( )
     headers = curl_slist_append(headers, CLOUD_ACCEPT);
     headers = curl_slist_append(headers, CLOUD_AUTHORIZE);
 
-    /* In windows, this will init the winsock stuff */ 
+    /* In windows, this will init the winsock stuff */
     curl_global_init(CURL_GLOBAL_ALL);
- 
-    /* get a curl handle */ 
+
+    /* get a curl handle */
     curl = curl_easy_init();
-    if(curl) {
+    if(curl)
+    {
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, GetToken_Response);
         curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, GetToken_Header_Response);
- 
-	if(endpoint_url == 1)
+
+        if(endpoint_url == 1)
             curl_easy_setopt(curl, CURLOPT_URL, MQTT_TOKEN_URL_QA);
-	else
+        else
             curl_easy_setopt(curl, CURLOPT_URL, MQTT_TOKEN_URL_PROD);
 
 //        curl_easy_setopt(curl, CURLOPT_URL, MQTT_TOKEN_URL);
@@ -189,23 +191,23 @@ int mqtt_token_refresh( )
         curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
 
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-	char tem[128];
-	bzero((char *) &tem, 128);
-        sprintf((char *) &tem, REFRESH_STR, refresh); 
-	logger_cloud("Refresh: %s", (char *) &tem);
+        char tem[128];
+        bzero((char *) &tem, 128);
+        sprintf((char *) &tem, REFRESH_STR, refresh);
+        logger_cloud("Refresh: %s", (char *) &tem);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, tem);
-        
-        /* Now run off and do what you've been told! */ 
+
+        /* Now run off and do what you've been told! */
         res = curl_easy_perform(curl);
-        /* Check for errors */ 
+        /* Check for errors */
         if(res != CURLE_OK)
             logger_cloud("curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-    /* always cleanup */ 
+        /* always cleanup */
         curl_easy_cleanup(curl);
     }
     curl_global_cleanup();
-    memcpy(token, (char *) &local_token, 64); 
-    memcpy(refresh, (char *) &l_refresh_token, 64); 
+    memcpy(token, (char *) &local_token, 64);
+    memcpy(refresh, (char *) &l_refresh_token, 64);
 
     return mqtt_token_ret;
 }

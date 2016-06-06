@@ -42,7 +42,8 @@ extern int pre_event;
 #define ODI_HOME	"/odi"
 #define MY_STRUCT_FILE_INITIALIZER { 0, 0, 0, 0 }
 #define FW_SIGNEDURL	2048
-struct my_file {
+struct my_file
+{
     int is_directory;
     time_t modification_time;
     int64_t size;
@@ -69,7 +70,8 @@ char *p_mqtt_server_url;	//Global MQTT server URL pointer
 
 char mqtt_refresh_token[TOKEN_SIZE+1];
 char mqtt_main_token[TOKEN_SIZE+1];
-char *SU_getVersion() {
+char *SU_getVersion()
+{
     char *str = malloc(20);
     sprintf(str, "%s", BODYVISIONVERSION);
     int i;
@@ -129,8 +131,10 @@ void sub_conf_message_callback(struct mosquitto *mosq, void *obj,
     cfg = (struct mosq_config *)obj;
 
     if(message->retain && cfg->no_retain) return;
-    if(cfg->filter_outs){
-        for(i=0; i<cfg->filter_out_count; i++){
+    if(cfg->filter_outs)
+    {
+        for(i=0; i<cfg->filter_out_count; i++)
+        {
             mosquitto_topic_matches_sub(cfg->filter_outs[i], message->topic, &res);
             if(res) return;
         }
@@ -153,7 +157,7 @@ void sub_conf_message_callback(struct mosquitto *mosq, void *obj,
     p_mqtt_server_url = (char *) &mqtt_server_url;
     bzero(p_mqtt_server_url, 64);
     strcpy(p_mqtt_server_url, process_json_data(message->payload, "mqtt_server", 0));
-    
+
 
     //should check to see if config update needed
     // Run config update by compare hash of config_version
@@ -288,7 +292,7 @@ void sub_conf_message_callback(struct mosquitto *mosq, void *obj,
                     UNIT_XML_RECPRE, rec_pre, UNIT_XML_RECPRE);
             fwrite((char *) &str_holder, 1, strlen((char *) &str_holder), fp);
             if(rec_pre != pre_event)
-	        config_change_reboot = 1; 
+                config_change_reboot = 1;
         }
 
 
@@ -352,9 +356,11 @@ void sub_conf_message_callback(struct mosquitto *mosq, void *obj,
 
     }
 
-    if(cfg->msg_count>0){
+    if(cfg->msg_count>0)
+    {
         msg_count++;
-        if(cfg->msg_count == msg_count){
+        if(cfg->msg_count == msg_count)
+        {
             process_messages = false;
             mosquitto_disconnect(mosq);
         }
@@ -392,8 +398,8 @@ void sub_conf_message_callback(struct mosquitto *mosq, void *obj,
     }
     if(config_change_reboot == 1)
     {
-	logger_cloud("Device need reboot to apply config change");
-	system("sync; reboot");
+        logger_cloud("Device need reboot to apply config change");
+        system("sync; reboot");
     }
 }
 
@@ -405,12 +411,17 @@ void sub_connect_callback(struct mosquitto *mosq, void *obj, int result)
     assert(obj);
     cfg = (struct mosq_config *)obj;
 
-    if(!result){
-        for(i=0; i<cfg->topic_count; i++){
+    if(!result)
+    {
+        for(i=0; i<cfg->topic_count; i++)
+        {
             mosquitto_subscribe(mosq, NULL, cfg->topics[i], cfg->qos);
         }
-    }else{
-        if(result && !cfg->quiet){
+    }
+    else
+    {
+        if(result && !cfg->quiet)
+        {
             logger_cloud("%s: MQTT error %s. Try to reconnect",__FUNCTION__, mosquitto_connack_string(result));
             // If getting here most of the time cause by "Authorized failure"
             // Time to refresh token from mqtt server
@@ -429,7 +440,8 @@ void sub_subscribe_callback(struct mosquitto *mosq, void *obj, int mid, int qos_
     cfg = (struct mosq_config *)obj;
     logger_cloud("%s: Subscribed (mid: %d): %d", __FUNCTION__, mid, granted_qos[0]);
     if(!cfg->quiet) printf("Subscribed (mid: %d): %d", mid, granted_qos[0]);
-    for(i=1; i<qos_count; i++){
+    for(i=1; i<qos_count; i++)
+    {
         if(!cfg->quiet) printf(", %d", granted_qos[i]);
     }
     if(!cfg->quiet) printf("\n");
@@ -463,7 +475,7 @@ int mqtt_authentication_refresh()
     p_dev_id = (char *) &dev_id;
     strcpy(p_dev_id, "/DEVICE/");
     strcat(p_dev_id, unitID);
-    
+
     // Call SUB init
     mqtt_sub_init((char *) &mqtt_main_token, p_new_dev, p_dev_id);
     int sub_init_try = 0;
@@ -525,7 +537,7 @@ void *mqtt_sub_main_task()
     p_dev_id = (char *) &dev_id;
     strcpy(p_dev_id, "/DEVICE/");
     strcat(p_dev_id, unitID);
-    
+
     // Call SUB init
     int sub_init_try = 0;
     mqtt_sub_init((char *) &mqtt_main_token, p_new_dev, p_dev_id);
@@ -581,7 +593,8 @@ char *ptest_conf[17] = {"mosquitto_sub",
                         "-q", "1",
                         "-i", "                              					",
                         "--tls-version", "tlsv1",
-                        "--cafile", MQTT_CERT_FILE};
+                        "--cafile", MQTT_CERT_FILE
+                       };
 int mqtt_sub_conf(int *sub_conf_keepalive)
 {
     struct mosq_config cfg;
@@ -633,7 +646,8 @@ int mqtt_sub_conf(int *sub_conf_keepalive)
     logger_detailed("SUB: Entering: %s ...", __FUNCTION__);
 
     rc = client_config_load(&cfg, CLIENT_SUB, argc, argv);
-    if(rc){
+    if(rc)
+    {
         client_config_cleanup(&cfg);
         logger_cloud("Use 'mosquitto_sub --help' to see usage.");
         return 1;
@@ -641,29 +655,34 @@ int mqtt_sub_conf(int *sub_conf_keepalive)
 
     mosquitto_lib_init();
 
-    if(client_id_generate(&cfg, "mosqsub")){
+    if(client_id_generate(&cfg, "mosqsub"))
+    {
         return 1;
     }
 
     mosq = mosquitto_new(cfg.id, cfg.clean_session, &cfg);
-    if(!mosq){
-        switch(errno){
-        case ENOMEM:
-            logger_cloud("Error: Out of memory.");
-            break;
-        case EINVAL:
-            logger_cloud("Error: Invalid id and/or clean_session.");
-            break;
+    if(!mosq)
+    {
+        switch(errno)
+        {
+            case ENOMEM:
+                logger_cloud("Error: Out of memory.");
+                break;
+            case EINVAL:
+                logger_cloud("Error: Invalid id and/or clean_session.");
+                break;
         }
         mosquitto_lib_cleanup();
         return 1;
     }
 
-    if(client_opts_set(mosq, &cfg)){
+    if(client_opts_set(mosq, &cfg))
+    {
         logger_cloud("Option set failed");
         return 1;
     }
-    if(cfg.debug){
+    if(cfg.debug)
+    {
         mosquitto_log_callback_set(mosq, sub_log_callback);
         mosquitto_subscribe_callback_set(mosq, sub_subscribe_callback);
     }
@@ -672,7 +691,8 @@ int mqtt_sub_conf(int *sub_conf_keepalive)
     mosquitto_message_callback_set(mosq, sub_conf_message_callback);
 
     rc = client_connect(mosq, &cfg);
-    if(rc) {
+    if(rc)
+    {
         *sub_conf_keepalive = 1;
         logger_cloud("Connection attempt error. Respawn: %d", *sub_conf_keepalive);
         return 1;
@@ -682,10 +702,12 @@ int mqtt_sub_conf(int *sub_conf_keepalive)
     mosquitto_destroy(mosq);
     mosquitto_lib_cleanup();
 
-    if(cfg.msg_count>0 && rc == MOSQ_ERR_NO_CONN){
+    if(cfg.msg_count>0 && rc == MOSQ_ERR_NO_CONN)
+    {
         rc = 0;
     }
-    if(rc){
+    if(rc)
+    {
         *sub_conf_keepalive = 1;
         logger_cloud("%s: %s\n",__FUNCTION__, mosquitto_strerror(rc));
         logger_cloud("SUBDEBUG Request return with error. Respawn: %d", *sub_conf_keepalive);
@@ -697,7 +719,8 @@ int mqtt_sub_conf(int *sub_conf_keepalive)
     return 1;
 }
 
-static int modifytree(xmlNodePtr *ParentPtr, xmlNodePtr sourceNode) {
+static int modifytree(xmlNodePtr *ParentPtr, xmlNodePtr sourceNode)
+{
     int notfound = -1; //not found
     xmlNodePtr child = (*ParentPtr)->xmlChildrenNode, txt = NULL;
     while (child != NULL)
@@ -719,7 +742,8 @@ static int modifytree(xmlNodePtr *ParentPtr, xmlNodePtr sourceNode) {
         child = child->next;
     }
 
-    if (notfound == -1) {
+    if (notfound == -1)
+    {
         xmlAddChild(*ParentPtr, xmlCopyNode(sourceNode, 1));
         xmlAddChild(*ParentPtr, xmlCopyNode(txt, 1));
         logger_remotem("LOAD_CONFIG_FILE: Node not found, adding new node: %s",
@@ -754,12 +778,14 @@ void cloud_config_xml_update(char *filename)
                  inputXmlPath, ODI_CONFIG_XML);
 
     struct my_file xmlfile = MY_STRUCT_FILE_INITIALIZER;
-    if (!my_file_stat(inputXmlPath, &xmlfile)) {
+    if (!my_file_stat(inputXmlPath, &xmlfile))
+    {
         logger_cloud("No Input Config file to Load  %s", inputXmlPath);
         //goto leave;
         return;
     }
-    if (!my_file_stat(ODI_CONFIG_XML, &xmlfile)) {
+    if (!my_file_stat(ODI_CONFIG_XML, &xmlfile))
+    {
         logger_cloud("No destination Config file to Merge  %s",
                      ODI_CONFIG_XML);
         //goto leave;
@@ -768,13 +794,15 @@ void cloud_config_xml_update(char *filename)
     logger_cloud("Start merge XML Config File: %s", inputXmlPath);
 
     xmlDocPtr inputXmlDocumentPointer = xmlParseFile(inputXmlPath);
-    if (inputXmlDocumentPointer == 0) {
+    if (inputXmlDocumentPointer == 0)
+    {
         logger_cloud("LOAD_CONFIG_FILE: input XML not well formed %s",
                      inputXmlPath);
         return;
     }
     xmlDocPtr configXmlDocumentPointer = xmlParseFile(ODI_CONFIG_XML);
-    if (configXmlDocumentPointer == 0) {
+    if (configXmlDocumentPointer == 0)
+    {
         logger_cloud("LOAD_CONFIG_FILE: config XML not well formed %s",
                      ODI_CONFIG_XML);
         return;
@@ -783,14 +811,16 @@ void cloud_config_xml_update(char *filename)
     // doc check
     xmlNodePtr cur = xmlDocGetRootElement(inputXmlDocumentPointer);
 
-    if (cur == NULL) {
+    if (cur == NULL)
+    {
         logger_cloud("LOAD_CONFIG_FILE: input XML is empty");
         xmlFreeDoc(configXmlDocumentPointer);
         xmlFreeDoc(inputXmlDocumentPointer);
         goto leave;
     }
     // config-meta check
-    if (xmlStrcmp(cur->name, (const xmlChar *) "config-metadata")) {
+    if (xmlStrcmp(cur->name, (const xmlChar *) "config-metadata"))
+    {
         logger_cloud("LOAD_CONFIG_FILE: config-metadata tag not found");
         xmlFreeDoc(configXmlDocumentPointer);
         xmlFreeDoc(inputXmlDocumentPointer);
@@ -800,14 +830,16 @@ void cloud_config_xml_update(char *filename)
     xmlNodePtr destParent = xmlDocGetRootElement(configXmlDocumentPointer);
 
     //node not found
-    if (destParent == NULL) {
+    if (destParent == NULL)
+    {
         logger_cloud("LOAD_CONFIG_FILE: empty doc");
         xmlFreeDoc(configXmlDocumentPointer);
         xmlFreeDoc(inputXmlDocumentPointer);
         goto leave;
     }
 
-    if (xmlStrcmp(destParent->name, (const xmlChar *) "config-metadata")) {
+    if (xmlStrcmp(destParent->name, (const xmlChar *) "config-metadata"))
+    {
         logger_cloud("LOAD_CONFIG_FILE:  root node != config-metadata");
         xmlFreeDoc(configXmlDocumentPointer);
         xmlFreeDoc(inputXmlDocumentPointer);
@@ -815,14 +847,17 @@ void cloud_config_xml_update(char *filename)
     }
 
     destParent = destParent->xmlChildrenNode;
-    while (destParent) {
-        if ((!xmlStrcmp(destParent->name, (const xmlChar *)"config"))) {
+    while (destParent)
+    {
+        if ((!xmlStrcmp(destParent->name, (const xmlChar *)"config")))
+        {
             found = 1;
             break;
         }
         destParent = destParent->next;
     }
-    if (!found) {
+    if (!found)
+    {
         logger_cloud("LOAD_CONFIG_FILE: config tag not found in %s",
                      configXmlPath);
         xmlFreeDoc(configXmlDocumentPointer);
@@ -834,35 +869,48 @@ void cloud_config_xml_update(char *filename)
     xmlNodePtr child= NULL;
     char *new_date = 0, *new_time = 0, *new_tz = 0;
     char str_comm[200];
-    while (cur != NULL) {
-        if ((!xmlStrcmp(cur->name, (const xmlChar *)"config"))) {
+    while (cur != NULL)
+    {
+        if ((!xmlStrcmp(cur->name, (const xmlChar *)"config")))
+        {
             child = cur->xmlChildrenNode;
-            while (child != NULL) {
-                if (!(xmlStrcmp(child->name, (const xmlChar *)"text"))) {
+            while (child != NULL)
+            {
+                if (!(xmlStrcmp(child->name, (const xmlChar *)"text")))
+                {
                     ;
-                } else if (!(xmlStrcmp(child->name, (const xmlChar *)"dvr_id"))) {
+                }
+                else if (!(xmlStrcmp(child->name, (const xmlChar *)"dvr_id")))
+                {
                     // cannot change DVR ID
                     ;
-                } else if (!(xmlStrcmp(child->name, (const xmlChar *)"dts_time"))) {
+                }
+                else if (!(xmlStrcmp(child->name, (const xmlChar *)"dts_time")))
+                {
                     new_time = (char *)xmlNodeGetContent(child) ;
-                    if (strlen(new_time) == 8) { // Check for valid time
+                    if (strlen(new_time) == 8)   // Check for valid time
+                    {
                         logger_cloud("LOAD_CONFIG_FILE: setting time %s", new_time);
                         modifytree(&destParent, child);
                         memset(str_comm, 0, 200);
                         set_sys_clock(NULL, new_time); //Passed string and time set flag
                     }
-                } else if (!(xmlStrcmp(child->name, (const xmlChar *)"dts_tz"))) {
+                }
+                else if (!(xmlStrcmp(child->name, (const xmlChar *)"dts_tz")))
+                {
                     new_tz = (char *)xmlNodeGetContent(child) ;
                     modifytree(&destParent, child);
 
                     char ptr[strlen(new_tz)+1];
                     int i, j=0;
 
-                    for (i=0; new_tz[i]!=' '; i++) {
+                    for (i=0; new_tz[i]!=' '; i++)
+                    {
                         // skip till space
                     }
                     i++; // move up from the space
-                    for (i; new_tz[i]!='\0'; i++) {
+                    for (i; new_tz[i]!='\0'; i++)
+                    {
                         ptr[j++]=new_tz[i];
                     }
                     ptr[j]='\0';
@@ -871,37 +919,54 @@ void cloud_config_xml_update(char *filename)
                     sprintf(str_comm, "export TZ=%s", ptr);
                     system(str_comm);
 
-                } else if (!(xmlStrcmp(child->name, (const xmlChar *)"eth_dhcp"))) {
+                }
+                else if (!(xmlStrcmp(child->name, (const xmlChar *)"eth_dhcp")))
+                {
                     isNetUpdate = 1;
                     if (!(xmlStrcmp((const xmlChar *)xmlNodeGetContent(child),
-                                    (const xmlChar *)"true"))) {
+                                    (const xmlChar *)"true")))
+                    {
                         dhcp = 1;
                         logger_cloud("LOAD_CONFIG_FILE: change to DHCP");
-                    } else {
+                    }
+                    else
+                    {
                         dhcp = 0;
                         logger_cloud("LOAD_CONFIG_FILE: DHCP is static");
                     }
                     modifytree(&destParent, child);
-                } else if (!(xmlStrcmp(child->name, (const xmlChar *)"eth_addr"))) {
+                }
+                else if (!(xmlStrcmp(child->name, (const xmlChar *)"eth_addr")))
+                {
                     address = (char *)xmlNodeGetContent(child) ;
-                    if (address != NULL && strlen(address) > 7) {
+                    if (address != NULL && strlen(address) > 7)
+                    {
                         isNetUpdate = 1;
                         modifytree(&destParent, child);
                     }
-                } else if (!(xmlStrcmp(child->name, (const xmlChar *)"eth_mask"))) {
+                }
+                else if (!(xmlStrcmp(child->name, (const xmlChar *)"eth_mask")))
+                {
                     netmask = (char *)xmlNodeGetContent(child);
-                    if (netmask != NULL && strlen(netmask) > 7) {
+                    if (netmask != NULL && strlen(netmask) > 7)
+                    {
                         isNetUpdate = 1;
                         modifytree(&destParent, child);
                     }
-                } else if (!(xmlStrcmp(child->name, (const xmlChar *)"eth_gate"))) {
+                }
+                else if (!(xmlStrcmp(child->name, (const xmlChar *)"eth_gate")))
+                {
                     gateway = (char *)xmlNodeGetContent(child);
-                    if (gateway != NULL && strlen(gateway) > 7) {
+                    if (gateway != NULL && strlen(gateway) > 7)
+                    {
                         isNetUpdate = 1;
                         modifytree(&destParent, child);
                     }
-                } else {
-                    if (modifytree(&destParent, child) == -1) {
+                }
+                else
+                {
+                    if (modifytree(&destParent, child) == -1)
+                    {
                         logger_cloud("LOAD_CONFIG_FILE: %s doesn't contain %s tag",
                                      configXmlPath, (char *)child->name);
                     }
@@ -932,7 +997,8 @@ char *ptest_mvi[9] = {"mosquitto_sub",
                       "-t", "mvi",
                       "-h", "192.168.250.119",
                       "-p", "1883",
-                      "-q", "1"};
+                      "-q", "1"
+                     };
 int mqtt_sub_test(int *sub_conf_keepalive)
 {
     struct mosq_config cfg;
@@ -950,7 +1016,8 @@ int mqtt_sub_test(int *sub_conf_keepalive)
     logger_detailed("SUB: Entering: %s ...", __FUNCTION__);
 
     rc = client_config_load(&cfg, CLIENT_SUB, argc, argv);
-    if(rc){
+    if(rc)
+    {
         client_config_cleanup(&cfg);
         logger_cloud("Use 'mosquitto_sub --help' to see usage.");
         return 1;
@@ -958,29 +1025,34 @@ int mqtt_sub_test(int *sub_conf_keepalive)
 
     mosquitto_lib_init();
 
-    if(client_id_generate(&cfg, "mosqsub")){
+    if(client_id_generate(&cfg, "mosqsub"))
+    {
         return 1;
     }
 
     mosq = mosquitto_new(cfg.id, cfg.clean_session, &cfg);
-    if(!mosq){
-        switch(errno){
-        case ENOMEM:
-            logger_cloud("Error: Out of memory.");
-            break;
-        case EINVAL:
-            logger_cloud("Error: Invalid id and/or clean_session.");
-            break;
+    if(!mosq)
+    {
+        switch(errno)
+        {
+            case ENOMEM:
+                logger_cloud("Error: Out of memory.");
+                break;
+            case EINVAL:
+                logger_cloud("Error: Invalid id and/or clean_session.");
+                break;
         }
         mosquitto_lib_cleanup();
         return 1;
     }
 
-    if(client_opts_set(mosq, &cfg)){
+    if(client_opts_set(mosq, &cfg))
+    {
         logger_cloud("Option set failed");
         return 1;
     }
-    if(cfg.debug){
+    if(cfg.debug)
+    {
         mosquitto_log_callback_set(mosq, sub_log_callback);
         mosquitto_subscribe_callback_set(mosq, sub_subscribe_callback);
     }
@@ -989,7 +1061,8 @@ int mqtt_sub_test(int *sub_conf_keepalive)
     mosquitto_message_callback_set(mosq, sub_conf_message_callback);
 
     rc = client_connect(mosq, &cfg);
-    if(rc) {
+    if(rc)
+    {
         *sub_conf_keepalive = 1;
         logger_cloud("Connection attempt error. Respawn: %d", *sub_conf_keepalive);
         return 1;
@@ -999,10 +1072,12 @@ int mqtt_sub_test(int *sub_conf_keepalive)
     mosquitto_destroy(mosq);
     mosquitto_lib_cleanup();
 
-    if(cfg.msg_count>0 && rc == MOSQ_ERR_NO_CONN){
+    if(cfg.msg_count>0 && rc == MOSQ_ERR_NO_CONN)
+    {
         rc = 0;
     }
-    if(rc){
+    if(rc)
+    {
         *sub_conf_keepalive = 1;
         logger_cloud("%s: %s\n",__FUNCTION__, mosquitto_strerror(rc));
         logger_cloud("SUBDEBUG Request return with error. Respawn: %d", *sub_conf_keepalive);

@@ -5,8 +5,8 @@
 extern "C" {
 #endif
 
-
-enum {
+enum 
+{
     BV_OK = 5000,
     HAD_NOFILE,
     HTTP_200,
@@ -18,8 +18,9 @@ enum {
     UPLOAD_ERR,
     UPDATE_ERR,
     UNKNOWN
-} BV_RESPONSE_CODE;
-    
+}
+BV_RESPONSE_CODE;
+
 int HTTP_Status_Handler(char *, const char *);
 const char * process_json_data(char *ptr, char * search_key, int * intval);
 void logger_cloud(char* str_log, ...);
@@ -34,7 +35,6 @@ int checkhost();
 int logfile_for_cloud();
 int check_log_push_time();
 
-
 #define BV_SUCCESS	1
 #define BV_FAILURE	0
 
@@ -44,9 +44,10 @@ int check_log_push_time();
 
 #define FILE_LIST_SIZE  200
 #define FILE_NAME_SIZE  32
-#define SIGNEDURL_SIZE  2048 
+#define SIGNEDURL_SIZE  2048
 #define TOKEN_SIZE      64
 #define TOCLOUDATTEMPT	5
+
 extern int cloud_init;
 
 //#define UPLOAD_MAIN_URL "http://ec2-96-127-65-40.us-gov-west-1.compute.amazonaws.com"
@@ -89,4 +90,4 @@ extern int cloud_init;
 #define CLOUD_DEVICE		"Device: BodyVision"
 
 #endif
-	
+

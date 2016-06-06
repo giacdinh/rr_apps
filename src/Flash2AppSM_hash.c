@@ -15,49 +15,48 @@
 #define FLASH2_SUCCESS 0
 
 static void SMSSLInit(void)
-{	
+{
 	SSL_load_error_strings();
 	SSL_library_init();
 	OpenSSL_add_all_algorithms();
 	//ERR_load_crypto_strings();
-	
+
 	/* Init available hardware crypto engines. */
 	ENGINE_load_builtin_engines();
 	ENGINE_register_all_complete();
-
 }
 
-FLASH2_CHAR *Flash2AppSMGetCertificate(void)
+FLASH2_CHAR* Flash2AppSMGetCertificate(void)
 {
 	static char cert[MAX_CERT_SIZE];
 
-	FILE *fp;
+	FILE* fp;
 	int len;
-	int init=0;
+	int init = 0;
 
-	if (init==0)
+	if (init == 0)
 	{
-		fp = fopen (CERTF, "r");
+		fp = fopen(CERTF, "r");
 		if (fp == NULL)
 		{
-		  printf("error opening cert file\n");
-		  return NULL;
+			printf("error opening cert file\n");
+			return NULL;
 		}
 
-		len=fread(cert, 1, MAX_CERT_SIZE, fp);
+		len = fread(cert, 1, MAX_CERT_SIZE, fp);
 
-		if (len<=0)
+		if (len <= 0)
 		{
-		  printf("error reading certificate\n");
-		  fclose(fp);
-		  return NULL;
+			printf("error reading certificate\n");
+			fclose(fp);
+			return NULL;
 		}
 
-		cert[len]='\0';
+		cert[len] = '\0';
 
 		fclose(fp);
 
-		init=1;
+		init = 1;
 	}
 
 	return cert;
@@ -67,75 +66,73 @@ SM_MEDIA_HANDLE Flash2AppSMGenerateHashOpen(void)
 {
 	SM_MEDIA_HANDLE h;
 
-	h=(SM_MEDIA_HANDLE)malloc(sizeof(*h));
-
+	h = (SM_MEDIA_HANDLE)malloc(sizeof(*h));
 	if (h)
 	{
+		/* Just load the crypto library error strings,
+		* SSL_load_error_strings() loads the crypto AND the SSL ones */
+		/* SSL_load_error_strings();*/
+		//ERR_load_crypto_strings();
 
-	  /* Just load the crypto library error strings,
-	   * SSL_load_error_strings() loads the crypto AND the SSL ones */
-	  /* SSL_load_error_strings();*/
-	  //ERR_load_crypto_strings();
+		{
+			FILE* fp;
 
-	  {
-		  FILE 			*fp;
-		  /* Read private key */
+			/* Read private key */
+			fp = fopen(KEYF, "r");
+			if (fp == NULL)
+			{
+				printf("error opening keyfile\n");
+				free(h);
+				return NULL;
+			}
 
-		  fp = fopen (KEYF, "r");
-		  if (fp == NULL)
-		  {
-			  printf("error opening keyfile\n");
-			  free(h);
-			  return NULL;
-		  }
-
-		  h->pkey = PEM_read_PrivateKey(fp, NULL, NULL, NULL);
-		  fclose (fp);
-	  }
+			h->pkey = PEM_read_PrivateKey(fp, NULL, NULL, NULL);
+			fclose(fp);
+		}
 
 
-	  if (h->pkey == NULL)
-	  {
-		  printf("error reading key\n");
-		  free(h);
-		  return NULL;
-	  }
+		if (h->pkey == NULL)
+		{
+			printf("error reading key\n");
+			free(h);
+			return NULL;
+		}
 
-	  /* Do the signature */
+		/* Do the signature */
 
-	  EVP_SignInit(&h->md_ctx, SM_HASH_FUNCTION);
+		EVP_SignInit(&h->md_ctx, SM_HASH_FUNCTION);
 	}
 
 	return h;
 }
 
-FLASH2_RESULT Flash2AppSMGenerateHashClose(SM_MEDIA_HANDLE h, SM_MEDIA_HASH metadata, FLASH2_UINT32 *metadata_len)
+FLASH2_RESULT Flash2AppSMGenerateHashClose(SM_MEDIA_HANDLE h, SM_MEDIA_HASH metadata, FLASH2_UINT32* metadata_len)
 {
-	int err, ret=FLASH2_FAILURE;
+	int err, ret = FLASH2_FAILURE;
 
 	if (h)
 	{
-		if (metadata==NULL)
+		if (metadata == NULL)
 		{
 			return FLASH2_FAILURE;
 		}
 
-		if (metadata_len==NULL || ((*metadata_len) < sizeof(*metadata)) )
+		if (metadata_len == NULL || ((*metadata_len) < sizeof(*metadata)))
 		{
 			printf("error: hash buffer too small\n");
 			return FLASH2_FAILURE;
 		}
 
-		err = EVP_SignFinal (&h->md_ctx, metadata->data, metadata_len, h->pkey);
+		err = EVP_SignFinal(&h->md_ctx, metadata->data, metadata_len, h->pkey);
 
 		if (err == 1)
 		{
-			ret=FLASH2_SUCCESS;
+			ret = FLASH2_SUCCESS;
 		}
 
 		if (h->pkey)
 		{
-			EVP_PKEY_free (h->pkey);
+			EVP_PKEY_free(h->pkey);
 		}
 
 		free(h);
@@ -144,7 +141,7 @@ FLASH2_RESULT Flash2AppSMGenerateHashClose(SM_MEDIA_HANDLE h, SM_MEDIA_HASH meta
 	return ret;
 }
 
-FLASH2_RESULT Flash2AppSMVerifyHashWrite(SM_MEDIA_HANDLE h, void *buffer, FLASH2_UINT32 buffer_len)
+FLASH2_RESULT Flash2AppSMVerifyHashWrite(SM_MEDIA_HANDLE h, void* buffer, FLASH2_UINT32 buffer_len)
 {
 	int err;
 
@@ -153,7 +150,7 @@ FLASH2_RESULT Flash2AppSMVerifyHashWrite(SM_MEDIA_HANDLE h, void *buffer, FLASH2
 		return FLASH2_FAILURE;
 	}
 
-	err=EVP_VerifyUpdate (&h->md_ctx, buffer, buffer_len);
+	err = EVP_VerifyUpdate(&h->md_ctx, buffer, buffer_len);
 
 	if (err != 1)
 	{
@@ -165,20 +162,20 @@ FLASH2_RESULT Flash2AppSMVerifyHashWrite(SM_MEDIA_HANDLE h, void *buffer, FLASH2
 
 FLASH2_RESULT Flash2AppSMVerifyHashClose(SM_MEDIA_HANDLE h)
 {
-	int err, ret=FLASH2_FAILURE;
+	int err, ret = FLASH2_FAILURE;
 
 	if (h)
 	{
-		err = EVP_VerifyFinal (&h->md_ctx, h->hash.data, h->hash_len, h->pkey);
+		err = EVP_VerifyFinal(&h->md_ctx, h->hash.data, h->hash_len, h->pkey);
 
 		if (err == 1)
 		{
-			ret=FLASH2_SUCCESS;
+			ret = FLASH2_SUCCESS;
 		}
 
 		if (h->pkey)
 		{
-			EVP_PKEY_free (h->pkey);
+			EVP_PKEY_free(h->pkey);
 		}
 
 		free(h);
@@ -187,110 +184,106 @@ FLASH2_RESULT Flash2AppSMVerifyHashClose(SM_MEDIA_HANDLE h)
 	return ret;
 }
 
-SM_MEDIA_HANDLE Flash2AppSMVerifyHashOpen(SM_MEDIA_HASH metadata, FLASH2_UINT32 metadata_len, char *certificate)
+SM_MEDIA_HANDLE Flash2AppSMVerifyHashOpen(SM_MEDIA_HASH metadata, FLASH2_UINT32 metadata_len, char* certificate)
 {
-        FILE *          fp;
-        X509 *                  x509;
-        int                     len;
+	FILE* fp;
+	X509* x509;
+	int len;
 
-    SM_MEDIA_HANDLE h;
+	SM_MEDIA_HANDLE h;
 
-        if (metadata==NULL)
-        {
-                return NULL;
-        }
+	if (metadata == NULL)
+	{
+		return NULL;
+	}
 
-        if (metadata_len > sizeof(h->hash) )
-        {
-                printf("error: hash too large\n");
-                return NULL;
-        }
+	if (metadata_len > sizeof(h->hash))
+	{
+		printf("error: hash too large\n");
+		return NULL;
+	}
 
-        h=(SM_MEDIA_HANDLE)malloc(sizeof(*h));
+	h = (SM_MEDIA_HANDLE)malloc(sizeof(*h));
+	if (h)
+	{
+		/* save metadata */
+		memcpy(&h->hash, metadata, metadata_len);
 
-        if (h)
-        {
+		h->hash_len = metadata_len;
 
-          /* save metadata */
+		/* Just load the crypto library error strings,
+		* SSL_load_error_strings() loads the crypto AND the SSL ones */
+		/* SSL_load_error_strings();*/
 
-          memcpy(&h->hash,metadata,metadata_len);
+		//ERR_load_crypto_strings();
 
-          h->hash_len=metadata_len;
+		/* Read public key */
 
-          /* Just load the crypto library error strings,
-           * SSL_load_error_strings() loads the crypto AND the SSL ones */
-          /* SSL_load_error_strings();*/
+		fp = tmpfile();
 
-          //ERR_load_crypto_strings();
+		if (fp == NULL)
+		{
+			printf("error opening temp file\n");
+			free(h);
+			return NULL;
+		}
 
-          /* Read public key */
+		len = strlen(certificate);
 
-          fp = tmpfile();
+		if (fwrite(certificate, 1, len, fp) != len)
+		{
+			printf("error writing to temp file\n");
+			fclose(fp);
+			free(h);
+			return NULL;
+		}
 
-          if (fp == NULL)
-          {
-                  printf("error opening temp file\n");
-                  free(h);
-                  return NULL;
-          }
+		rewind(fp);
 
-          len=strlen(certificate);
+		x509 = PEM_read_X509(fp, NULL, NULL, NULL);
 
-          if (fwrite(certificate, 1, len, fp)!=len)
-          {
-                  printf("error writing to temp file\n");
-                  fclose(fp);
-                  free(h);
-                  return NULL;
-          }
+		fclose(fp);
 
-          rewind(fp);
+		if (x509 == NULL)
+		{
+			printf("error reading certificate\n");
+			free(h);
+			return NULL;
+		}
 
-      x509 = PEM_read_X509(fp, NULL, NULL, NULL);
+		h->pkey = X509_get_pubkey(x509);
 
-          fclose (fp);
+		X509_free(x509);
 
-      if (x509 == NULL)
-          {
-                  printf("error reading certificate\n");
-                  free(h);
-                  return NULL;
-          }
+		if (h->pkey == NULL)
+		{
+			printf("error getting public key\n");
+			free(h);
+			return NULL;
+		}
 
-          h->pkey = X509_get_pubkey(x509);
+		/* Do the verification */
+		EVP_VerifyInit(&h->md_ctx, SM_HASH_FUNCTION);
+	}
 
-          X509_free (x509);
-
-          if (h->pkey == NULL)
-          {
-                  printf("error getting public key\n");
-                  free(h);
-                  return NULL;
-          }
-
-          /* Do the verification */
-
-          EVP_VerifyInit(&h->md_ctx, SM_HASH_FUNCTION);
-        }
-
-        return h;
+	return h;
 }
 
-FLASH2_RESULT Flash2AppSMGenerateHashWrite(SM_MEDIA_HANDLE h, void *buffer, FLASH2_UINT32 buffer_len)
+FLASH2_RESULT Flash2AppSMGenerateHashWrite(SM_MEDIA_HANDLE h, void* buffer, FLASH2_UINT32 buffer_len)
 {
-        int err;
+	int err;
 
-        if (h == NULL)
-        {
-                return FLASH2_FAILURE;
-        }
+	if (h == NULL)
+	{
+		return FLASH2_FAILURE;
+	}
 
-        err=EVP_SignUpdate (&h->md_ctx, buffer, buffer_len);
+	err = EVP_SignUpdate(&h->md_ctx, buffer, buffer_len);
 
-        if (err != 1)
-        {
-                return FLASH2_FAILURE;
-        }
+	if (err != 1)
+	{
+		return FLASH2_FAILURE;
+	}
 
-        return FLASH2_SUCCESS;
+	return FLASH2_SUCCESS;
 }

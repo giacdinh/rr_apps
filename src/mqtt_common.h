@@ -4,12 +4,12 @@ Copyright (c) 2014 Roger Light <roger@atchoo.org>
 All rights reserved. This program and the accompanying materials
 are made available under the terms of the Eclipse Public License v1.0
 and Eclipse Distribution License v1.0 which accompany this distribution.
- 
+
 The Eclipse Public License is available at
    http://www.eclipse.org/legal/epl-v10.html
 and the Eclipse Distribution License is available at
   http://www.eclipse.org/org/documents/edl-v10.php.
- 
+
 Contributors:
    Roger Light - initial implementation and documentation.
 */
@@ -41,64 +41,65 @@ Contributors:
 #define QA_MQTT_CERT_FILE "/odi/conf/m2mqtt_ca_qa.crt"
 
 #define MQTT_SUCCESS 1
-#define MQTT_FAILURE 0 
+#define MQTT_FAILURE 0
 
 
-struct mosq_config {
-	char *id;
-	char *id_prefix;
-	int protocol_version;
-	int keepalive;
-	char *host;
-	int port;
-	int qos;
-	bool retain;
-	int pub_mode; /* pub */
-	char *file_input; /* pub */
-	char *message; /* pub */
-	long msglen; /* pub */
-	char *topic; /* pub */
-	char *bind_address;
+struct mosq_config
+{
+    char *id;
+    char *id_prefix;
+    int protocol_version;
+    int keepalive;
+    char *host;
+    int port;
+    int qos;
+    bool retain;
+    int pub_mode; /* pub */
+    char *file_input; /* pub */
+    char *message; /* pub */
+    long msglen; /* pub */
+    char *topic; /* pub */
+    char *bind_address;
 #ifdef WITH_SRV
-	bool use_srv;
+    bool use_srv;
 #endif
-	bool debug;
-	bool quiet;
-	unsigned int max_inflight;
-	char *username;
-	char *password;
-	char *will_topic;
-	char *will_payload;
-	long will_payloadlen;
-	int will_qos;
-	bool will_retain;
+    bool debug;
+    bool quiet;
+    unsigned int max_inflight;
+    char *username;
+    char *password;
+    char *will_topic;
+    char *will_payload;
+    long will_payloadlen;
+    int will_qos;
+    bool will_retain;
 #ifdef WITH_TLS
-	char *cafile;
-	char *capath;
-	char *certfile;
-	char *keyfile;
-	char *ciphers;
-	bool insecure;
-	char *tls_version;
+    char *cafile;
+    char *capath;
+    char *certfile;
+    char *keyfile;
+    char *ciphers;
+    bool insecure;
+    char *tls_version;
 #  ifdef WITH_TLS_PSK
-	char *psk;
-	char *psk_identity;
+    char *psk;
+    char *psk_identity;
 #  endif
 #endif
-	bool clean_session; /* sub */
-	char **topics; /* sub */
-	int topic_count; /* sub */
-	bool no_retain; /* sub */
-	char **filter_outs; /* sub */
-	int filter_out_count; /* sub */
-	bool verbose; /* sub */
-	bool eol; /* sub */
-	int msg_count; /* sub */
+    bool clean_session; /* sub */
+    char **topics; /* sub */
+    int topic_count; /* sub */
+    bool no_retain; /* sub */
+    char **filter_outs; /* sub */
+    int filter_out_count; /* sub */
+    bool verbose; /* sub */
+    bool eol; /* sub */
+    int msg_count; /* sub */
 #ifdef WITH_SOCKS
-	char *socks5_host;
-	int socks5_port;
-	char *socks5_username;
-	char *socks5_password;
+    char *socks5_host;
+    int socks5_port;
+    char *socks5_username;
+    char *socks5_password;
 #endif
 };
 
@@ -124,7 +125,7 @@ int client_id_generate(struct mosq_config *cfg, const char *id_base);
 int client_connect(struct mosquitto *mosq, struct mosq_config *cfg);
 
 
-#define UNIT_XML_HEADER 	"<?xml version=\"1.0\" encoding=\"UTF-8\"?> \n" 
+#define UNIT_XML_HEADER 	"<?xml version=\"1.0\" encoding=\"UTF-8\"?> \n"
 #define UNIT_XML_METHEAD 	"    <config-metadata>\n"
 #define UNIT_XML_CONFHEAD 	"\t<config>\n"
 #define UNIT_XML_DTS_DST	"dts_dst"

@@ -62,13 +62,11 @@ char battery_level_str[16];
 int nstate90 = 0, nstate101 = 1 , tstate90 = 1, stealth_counter = 0;
 int stealth_on = 0;
 int resync_read = 0;
-//pid_t capture_pid = -1;
 int mute_on = 0;
 
-//int chkXmlRdy = 0;		// davis 11.22.2014
 int RecSizeChkState = 0;	// 01.06.2015
 char current_file[100];
-char  *ip_address;
+char* ip_address = 0;
 int network_counter = 0;
 int recording_counter = 0;
 struct sigaction saio; /* definition of signal action */

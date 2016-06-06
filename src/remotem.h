@@ -41,47 +41,47 @@ char downloading_status[20];
 
 // 1. LIST_DIRECTORY
 static const char *str_cmd_list_directory =
-        "/cgi-bin/Flash2AppREMOTEM_list_directory.cgi";
+    "/cgi-bin/Flash2AppREMOTEM_list_directory.cgi";
 // 2. PUT_FILE
 static const char *str_cmd_put_file = "/cgi-bin/Flash2AppREMOTEM_put_file.cgi";
 // 3. PUT_FILE_CLEANUP
 static const char *str_cmd_put_file_cleanup =
-        "/cgi-bin/Flash2AppREMOTEM_put_file_cleanup.cgi";
+    "/cgi-bin/Flash2AppREMOTEM_put_file_cleanup.cgi";
 // 4. GET_FILE
 static const char *str_cmd_get_file = "/cgi-bin/Flash2AppREMOTEM_get_file.cgi";
 // 5. DELETE_FILE
 static const char *str_cmd_delete_file =
-        "/cgi-bin/Flash2AppREMOTEM_delete_file.cgi";
+    "/cgi-bin/Flash2AppREMOTEM_delete_file.cgi";
 // 6. GET_DRIVE_INFO
 static const char *str_cmd_get_drive_info =
-        "/cgi-bin/Flash2AppREMOTEM_get_drive_info.cgi";
+    "/cgi-bin/Flash2AppREMOTEM_get_drive_info.cgi";
 // 7. FORMAT_DEVICE
 static const char *str_cmd_format_device =
-        "/cgi-bin/Flash2AppREMOTEM_format_device.cgi";
+    "/cgi-bin/Flash2AppREMOTEM_format_device.cgi";
 // 8. LOAD_CONFIG_FILE
 static const char *str_cmd_load_config_file =
-        "/cgi-bin/Flash2AppREMOTEM_load_config_file.cgi";
+    "/cgi-bin/Flash2AppREMOTEM_load_config_file.cgi";
 // 9. LOAD_SOFTWARE_UPGRADE
 static const char *str_cmd_load_sw_upgrade =
-        "/cgi-bin/Flash2AppREMOTEM_load_software_upgrade.cgi";
+    "/cgi-bin/Flash2AppREMOTEM_load_software_upgrade.cgi";
 // 10. GET_STATUS
 static const char *str_cmd_get_status =
-        "/cgi-bin/Flash2AppREMOTEM_get_status.cgi";
+    "/cgi-bin/Flash2AppREMOTEM_get_status.cgi";
 // 11. REBOOT
 static const char *str_cmd_reboot = "/cgi-bin/Flash2AppREMOTEM_reboot.cgi";
 // 12. GET_INFO
 static const char *str_cmd_get_info = "/cgi-bin/Flash2AppREMOTEM_get_info.cgi";
 // 13. GET_INFO
 static const char *str_cmd_downloading =
-        "/cgi-bin/Flash2AppREMOTEM_downloading.cgi";
+    "/cgi-bin/Flash2AppREMOTEM_downloading.cgi";
 // 14. IDENTIFY
 static const char *str_cmd_identify = "/cgi-bin/Flash2AppREMOTEM_identify.cgi";
 // 15. LOAD_UCODE_UPGRADE
 static const char *str_cmd_load_uc_upgrade =
-        "/cgi-bin/Flash2AppREMOTEM_load_ucode_upgrade.cgi";
+    "/cgi-bin/Flash2AppREMOTEM_load_ucode_upgrade.cgi";
 // 16. Remote Command
 static const char *str_command =
-        "/cgi-bin/Flash2AppREMOTEM_command.cgi";
+    "/cgi-bin/Flash2AppREMOTEM_command.cgi";
 
 static const char *http_500_error = "Internal Server Error";
 
@@ -119,13 +119,14 @@ static pthread_rwlock_t rwlock= PTHREAD_RWLOCK_INITIALIZER;
 
 #define MY_STRUCT_FILE_INITIALIZER { 0, 0, 0, 0 }
 
-struct my_file {
-  int is_directory;
-  time_t modification_time;
-  int64_t size;
-  // set to 1 if the content is gzipped
-  // in which case we need a content-encoding: gzip header
-  int gzipped;
+struct my_file
+{
+    int is_directory;
+    time_t modification_time;
+    int64_t size;
+    // set to 1 if the content is gzipped
+    // in which case we need a content-encoding: gzip header
+    int gzipped;
 };
 
 int my_file_stat(const char *path, struct my_file *filep);

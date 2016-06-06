@@ -30,11 +30,11 @@
 
 /* ODI kernel required delay element to keep sync */
 #ifdef ODI_KERNEL
-    #define ODI_AUDIO_DELAY 100000000
-    #define MP3_PARSE ""
+#define ODI_AUDIO_DELAY 100000000
+#define MP3_PARSE ""
 #else
-    #define ODI_AUDIO_DELAY 0
-    #define MP3_PARSE " mp3parse ! "
+#define ODI_AUDIO_DELAY 0
+#define MP3_PARSE " mp3parse ! "
 #endif
 
 // global variables

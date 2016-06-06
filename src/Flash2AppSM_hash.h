@@ -30,10 +30,10 @@
 
 typedef struct
 {
-  SSL_CTX* ctx;
-  SSL*     ssl;
-  X509*    peer_cert;
-  int	   sd;
+    SSL_CTX* ctx;
+    SSL*     ssl;
+    X509*    peer_cert;
+    int	   sd;
 } _SM_HANDLE;
 
 typedef _SM_HANDLE * SM_HANDLE;
@@ -42,17 +42,17 @@ typedef _SM_HANDLE * SM_HANDLE;
 
 typedef struct
 {
-	unsigned char data[FLASH2_SM_MEDIA_HASH_SIZE];
+    unsigned char data[FLASH2_SM_MEDIA_HASH_SIZE];
 } _SM_MEDIA_HASH;
 
 typedef _SM_MEDIA_HASH * SM_MEDIA_HASH;
 
 typedef struct
 {
-	EVP_MD_CTX     md_ctx;
-	EVP_PKEY *     pkey;
-	_SM_MEDIA_HASH  hash;
-	int				hash_len;
+    EVP_MD_CTX     md_ctx;
+    EVP_PKEY *     pkey;
+    _SM_MEDIA_HASH  hash;
+    int				hash_len;
 } _SM_MEDIA_HANDLE;
 
 typedef _SM_MEDIA_HANDLE * SM_MEDIA_HANDLE;
