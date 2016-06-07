@@ -1499,6 +1499,8 @@ void gst_attach_sink()
 	sprintf(id, "inter_video_sink_%d", active_trigger_bin);
 	logger_debug("attaching video sink to %s", id);
 	g_object_set(G_OBJECT(inter_video_src), "listen-to", id, NULL);
+	// Generate video subsystem ready for recording flag
+	system("touch /tmp/record_ready");
 
 	/* If enabled, print the pipeline graph */
 	GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(g_pipe), GST_DEBUG_GRAPH_SHOW_NON_DEFAULT_PARAMS, "gst_pipeline_sink_attach");
@@ -1733,6 +1735,7 @@ int main(int argc, char* argv[])
 	logger_info("Removing ov5640 and capture driver driver");
 	system("rmmod ov5640_camera_mipi");
 	system("rmmod mxc_v4l2_capture");
+	remove("/tmp/record_ready");
 
 	return 0;
 }

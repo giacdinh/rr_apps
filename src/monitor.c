@@ -1230,7 +1230,7 @@ int ttymx_action(char* command)
 			if (-1 == (int)pid_find(ODI_CAPTURE))
 			{
 				logger_info("Camera is undocked: launch gst_capture for pre-event time %d s", pre_event);
-				int i;
+				int i = 0;
 				time_t now = time(NULL);
 				struct tm ts;
 				char ymd[20];
@@ -1241,10 +1241,20 @@ int ttymx_action(char* command)
 				sleep(2);
 				//pre_event_recording = 1;
 				//pre_event_started = 1;
-				while (-1 == (int)pid_find(ODI_CAPTURE))
+			   	// Check video subsystem readiness
+				while (1)
 				{
-					logger_info("Waiting for Pre_event ready: %d", i);
-					sleep(1);
+					if(access("/tmp/record_ready", 0) == 0)
+					{
+						// If ready to record, remove flag for next time
+						remove("/tmp/record_ready");
+						break;
+					}
+					else
+					{
+					    logger_info("Waiting for Pre_event ready: %d", i++);
+					    sleep(1);
+					}
 				}
 			}
 			logger_info("%s:%d Start main record in pre_event case, sending SIGCONT to gst_capture", __FUNCTION__, __LINE__);
