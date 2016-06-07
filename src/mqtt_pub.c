@@ -306,7 +306,7 @@ int mqtt_get_file_list()
     return 0;
 }
 
-void *mqtt_pub_main_task()
+void* mqtt_pub_main_task(void* thread_func_param)
 {
     logger_detailed("PUB: Entering: %s PID: %lu", __FUNCTION__, (unsigned long) pthread_self());
     int rc;

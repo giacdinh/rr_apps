@@ -257,7 +257,7 @@ int generateManifest(const char* xml_filename, int index)
 		fclose(fp);
 		logger_debug("Close hash calculation");
 		int hash_size = FLASH2_SM_MEDIA_HASH_SIZE;
-		Flash2AppSMGenerateHashClose(HashHandle, RSA_buf, &hash_size);
+		Flash2AppSMGenerateHashClose(HashHandle, (SM_MEDIA_HASH)RSA_buf, &hash_size);
 
 		/* Now open the XML to append the hashing */
 		logger_debug("Writing XML header hash");
@@ -1499,6 +1499,7 @@ void gst_attach_sink()
 	sprintf(id, "inter_video_sink_%d", active_trigger_bin);
 	logger_debug("attaching video sink to %s", id);
 	g_object_set(G_OBJECT(inter_video_src), "listen-to", id, NULL);
+
 	// Generate video subsystem ready for recording flag
 	system("touch /tmp/record_ready");
 
@@ -1735,6 +1736,7 @@ int main(int argc, char* argv[])
 	logger_info("Removing ov5640 and capture driver driver");
 	system("rmmod ov5640_camera_mipi");
 	system("rmmod mxc_v4l2_capture");
+
 	remove("/tmp/record_ready");
 
 	return 0;

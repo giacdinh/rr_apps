@@ -3,18 +3,18 @@ DEFS=-DHAVE_LIBGSTREAMER_0_10=1 -DHAVE_LIBXML2=1 -DHAVE_LIBCRYPTO=1 -DSTDC_HEADE
  -DHAVE_STDINT_H=1 -DHAVE_UNISTD_H=1 -DHAVE_STDLIB_H=1 -DHAVE_OPENSSL_SHA_H=1 -DHAVE_SETENV=1
 
 export PKG_CONFIG_PATH=../../../fs/fsdev/usr/lib/pkgconfig:../../../fs/fsdev/lib/pkgconfig
-#CFLAGS+=-O2
 CFLAGS+=-ggdb3
+CCFLAGS+=-std=c++0x
 
 MACHINE:=$(shell uname -m)
 
 ROOTFS=$(PWD)/../../fs/fs/
 FSDEV=$(PWD)/../../../fs/fsdev/
 
-#CC=arm-linux-gnueabi-gcc
 CC=arm-unknown-linux-gnueabihf-gcc
+CPP=arm-unknown-linux-gnueabihf-g++
+
 INCLUDES=-I. -I$(FSDEV)/usr/include/gstreamer-0.10 -I$(FSDEV)/usr/include
-#INCLUDES+= -I$(FSDEV)/usr/include/glib-2.0 -I$(FSDEV)/usr/include/libxml2 
 INCLUDES+=`pkg-config --cflags libxml-2.0 gobject-2.0 glib-2.0 gstreamer-0.10 openssl libssl libcrypto libffi libcurl`
 
 LIBS=`pkg-config --libs libxml-2.0 gobject-2.0 glib-2.0 gstreamer-0.10 openssl libssl libcrypto libffi json libcurl libcares` -lm -L../../../fs/fsdev/usr/lib/ -lz -lpthread -lmosquitto -ldl
@@ -30,7 +30,7 @@ ezxml.o:
 	$(CC) -ggdb -c ezxml.c
 
 watch_mon:
-	$(CC) -o watch_mon watch_mon.c
+	$(CC) $(CFLAGS) -o watch_mon watch_mon.c
 
 remotem.o: remotem.c odi-config.h version.h
 	$(CC) $(CFLAGS) $(INCLUDES) -D_FILE_OFFSET_BITS=64 -c remotem.c -I$(FSDEV)/usr/include/libxml2
@@ -51,12 +51,12 @@ monitor: monitor.c ezxml.o monitor.h mongoose.o remotem.o udp_util.o BVcloud.o \
 	FileUpload.o FileDownload.o GetSignedURL.o GetToken.o Parse_Json.o UpdateStatus.o GetTime.o \
 	RefreshToken.o mqtt_common.o mqtt_sub.o mqtt_sub_init.o mqtt_token.o mqtt_pub.o Configupdate.o \
 	LogGetSignedURL.o LogUpload.o
-	$(CC) $(CFLAGS) -o monitor -D_FILE_OFFSET_BITS=64 $(INCLUDES) monitor.c mongoose.o \
+	$(CPP) $(CCFLAGS) -o monitor -D_FILE_OFFSET_BITS=64 $(INCLUDES) monitor.c mongoose.o \
 		remotem.o udp_util.o ezxml.o BVcloud.o FileUpload.o FileDownload.o GetSignedURL.o GetTime.o \
 		GetToken.o Parse_Json.o  UpdateStatus.o RefreshToken.o Configupdate.o \
 		mqtt_sub.o mqtt_common.o mqtt_sub_init.o mqtt_token.o mqtt_pub.o \
 		LogGetSignedURL.o LogUpload.o \
-		$(LIBS) 
+		$(LIBS)
 
 #Cloud build
 BVcloud.o:
@@ -76,6 +76,7 @@ GetToken.o:
 
 Parse_Json.o:
 	$(CC) -ggdb -std=c99 $(INCLUDES) -c Parse_Json.c
+	#$(CPP) $(CCFLAGS) $(INCLUDES) -c Parse_Json.c
 
 UpdateStatus.o:
 	$(CC) $(CFLAGS) $(INCLUDES) -c UpdateStatus.c 

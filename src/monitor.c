@@ -1,10 +1,10 @@
-#include "odi-config.h"
 #include "monitor.h"
-#include "ezxml.h"
+#include "odi-config.h"
 #include "BVcloud.h"
 #include <netdb.h>
 #include <pthread.h>
 #include <errno.h>
+#include <ctype.h>
 
 #define LOG_INFO_USE 	1
 #define LOG_DEBUG_USE 	1
@@ -40,6 +40,26 @@ extern char refresh_token;
 #define PATH_SWITCH_TIMER	(120) // in seconds trying to connect to path DES/CLOUD
 #define RCO_BUZZ_TIMER		(5*60) // in seconds recording buzz duration
 #define CLOUD_LOG_TIMER		(60)	// in seconds log mqtt action
+
+int check_debug_flag();
+int get_eth0_state();
+int ttymx_action(char* command);
+int parseXML();
+int reset_config();
+void shutdown_capture();
+pid_t pid_find(char* process_name);
+
+extern "C" void configure_network();
+extern "C" char* getIP(int* ip_abort);
+extern "C" char* getSerial();
+extern "C" char* getVersion();
+extern "C" int get_end_URL();
+extern "C" int BV_to_cloud();
+extern "C" int GetToken(char* token, char* refresh);
+extern "C" int GetTime();
+extern "C" int start_mongoose(int ether);
+extern "C" void initUDP(char* version_str, char* dvr_id, char* api, char* broadcast_ip);
+extern "C" int sendUDP();
 
 static void file_write_log(char* level, char* str_log)
 {
@@ -174,7 +194,7 @@ unsigned long RCO_buzz_timer = 0;
 int RCO_buzzing = 0;
 int LOG_enable = 0;
 
-void* timer_task()
+static void* timer_task(void* thread_func_param)
 {
 	static unsigned long time_maker = 0, log_timer = 0;
 	struct timeval tv;
@@ -282,8 +302,9 @@ int open_serial_port()
 	serial.c_cflag &= ~CSTOPB;
 	serial.c_cflag &= ~CRTSCTS; // no HW flow control
 	serial.c_cflag |= CLOCAL | CREAD;
-	if (tcsetattr(fd, TCSANOW, &serial) < 0)   // Apply configuration
+	if (tcsetattr(fd, TCSANOW, &serial) < 0)
 	{
+		// Apply configuration
 		perror("Setting configuration failed");
 		exit(0);
 	}
@@ -293,34 +314,39 @@ int open_serial_port()
 void add_signal_handler()
 {
 	logger_detailed("Entering: %s", __FUNCTION__);
-	//  set async read signal handler
+
+	// Set async read signal handler
 	saio.sa_handler = signal_handler_IO;
 	sigemptyset(&saio.sa_mask);
 	saio.sa_flags = 0;
 	saio.sa_restorer = NULL;
 	sigaction(SIGIO, &saio, NULL);
-	/* allow the process to receive SIGIO */
+
+	// Allow the process to receive SIGIO
 	fcntl(serial_port_fd, F_SETOWN, getpid());
+
 	//Make the file descriptor asynchronous (the manual page says  only
 	//O_APPEND and O_NONBLOCK, will work with F_SETFL...)
 	fcntl(serial_port_fd, F_SETFL, FASYNC);
 	logger_debug("Initialization of UART done");
 }
 
-void* serial_raw_read()
+static void* serial_raw_read(void* thread_func_param)
 {
 	logger_detailed("Entering: %s", __FUNCTION__);
 	char* read_ptr = serial_raw_read_buf;
 	int curr_read_loc_ptr = 0;		// end of last read in buffer
 	int msg_start_ptr = 0;			// start of message in buffer
 	logger_debug("serial read thread started");
+
 	while (thread_run)
 	{
 		// for now just a test to setup long 5 seconds timeout
-		if (serial_raw_read_last = serial_raw_read_cur)
+		if (serial_raw_read_last == serial_raw_read_cur)
 		{
 			serial_raw_read_last = serial_raw_read_cur = 0;
 		}
+
 		if ((serial_port_fd > 0))
 		{
 			int cnt = read(serial_port_fd, (read_ptr + serial_raw_read_cur), (COMM_BUFFER_SIZE - serial_raw_read_cur));
@@ -342,8 +368,10 @@ void* serial_raw_read()
 
 			// Make sure there is a message on the starting position
 			// keep moving message starting position while message does not have correct prefix and suffix
-			while (read_ptr[msg_start_ptr] != 0xff || read_ptr[msg_start_ptr + 1] != 0xff
-				|| read_ptr[msg_start_ptr + 5] != 0x0d || read_ptr[msg_start_ptr + 6] != 0x0a)
+			while (read_ptr[msg_start_ptr] != 0xff
+				|| read_ptr[msg_start_ptr + 1] != 0xff
+				|| read_ptr[msg_start_ptr + 5] != 0x0d
+				|| read_ptr[msg_start_ptr + 6] != 0x0a)
 			{
 				msg_start_ptr++; // look at next char
 				if (msg_start_ptr >= COMM_BUFFER_SIZE) // reset to prevent buffer over run
@@ -357,6 +385,7 @@ void* serial_raw_read()
 					continue;	// not enough chars for message, so go read again
 				}
 			}
+
 			// by the time this loop is exited, then the message buffer looks like 0xff,0xff, XXX, CR, LF
 			// so reset global pointers to message starting position
 			cnt = COMM_MESSAGE_SIZE;                                   // cnt is message size
@@ -386,6 +415,7 @@ void* serial_raw_read()
 				read_ptr[serial_raw_read_cur + 2],
 				read_ptr[serial_raw_read_cur + 3],
 				read_ptr[serial_raw_read_cur + 4]);
+
 			if (strcasecmp(bat, "B0C") == 0)
 			{
 				logger_info("Battery level < 25%%");
@@ -443,7 +473,7 @@ void* serial_raw_read()
 		else
 		{
 			logger_error("No serial FD %d errno %d", serial_port_fd, errno);
-			return;
+			return NULL;
 		}
 		usleep(90000);
 	} // while loop
@@ -460,6 +490,7 @@ int write_command_to_serial_port(char* comm)
 			cmd[0], cmd[1], cmd[2], cmd[3], cmd[4]);
 	}
 	int wcount = write(serial_port_fd, comm, strlen(comm));
+
 	//logger_debug("Sent [%d] characters strlen %d [%s]", wcount, strlen(comm), trimStr(comm));
 	if (wcount < 0)
 	{
@@ -565,13 +596,16 @@ int get_link_state()
 	char buffer;
 	size_t bytes_read = 0;
 	int file_ptr = open("/odi/log/net_state", O_RDONLY);
+
 	if (file_ptr == -1)
 	{
 		logger_error("%s: Open file: net_state failed", __FUNCTION__);
 		return -1;
 	}
+
 	bytes_read = read(file_ptr, &buffer, 1);
 	close(file_ptr);
+
 	if (bytes_read != 1)
 	{
 		logger_error("Error reading bytes from net_state");
@@ -631,6 +665,7 @@ int get_network_phy_state()
 			logger_info("Ethernet flags mismatch. If not change system will reboot in 2 minute");
 			network_restart_timer = timeinfo.tm_hour * 100 + timeinfo.tm_min;
 		}
+
 		if ((timeinfo.tm_hour * 100 + timeinfo.tm_min) - network_restart_timer > 2)
 		{
 			logger_info("System reboot because of Ethernet flags mismatch");
@@ -843,7 +878,7 @@ pid_t pid_find(char* process_name)
 	FILE* proc_fp;
 	char* command_string = NULL;
 	char* name = NULL;
-	name = malloc(strlen(process_name) + 1);
+	name = (char*)malloc(strlen(process_name) + 1);
 	if (!name)
 	{
 		logger_error("Memory allocation error");
@@ -852,7 +887,7 @@ pid_t pid_find(char* process_name)
 	memset(name, 0, strlen(process_name) + 1);
 	strcpy(name, process_name);
 
-	command_string = realloc(command_string, strlen("/bin/pidof ") + strlen(name) + 1);
+	command_string = (char*)realloc(command_string, strlen("/bin/pidof ") + strlen(name) + 1);
 	memset(command_string, 0, strlen("/bin/pidof ") + strlen(name) + 1);
 	strcat(command_string, "/bin/pidof ");
 	strcat(command_string, process_name);
@@ -865,7 +900,8 @@ pid_t pid_find(char* process_name)
 		free(name);
 		return -1;
 	}
-	/* Read the output a line at a time - output it. */
+
+	// Read the output a line at a time - output it.
 	while (fgets(command_string, 10, proc_fp) != NULL)
 	{
 		size_t newbuflen = strlen(command_string);
@@ -878,6 +914,7 @@ pid_t pid_find(char* process_name)
 		pclose(proc_fp);
 		free(command_string);
 		free(name);
+
 		//logger_debug("pid_find: name=%s, pid=%d",process_name, pid);
 		return (pid_t)pid;
 	}
@@ -887,7 +924,6 @@ pid_t pid_find(char* process_name)
 int get_eth0_state()
 {
 	char buffer;
-
 	size_t bytes_read = 0;
 	int file_ptr = open(ETH0_CARRIER_FILE, O_RDONLY);
 	if (file_ptr == -1)
@@ -898,6 +934,7 @@ int get_eth0_state()
 
 	bytes_read = read(file_ptr, &buffer, 1);
 	close(file_ptr);
+
 	if (bytes_read != 1)
 	{
 		logger_error("Error reading bytes from eth0 file");
@@ -932,7 +969,6 @@ int get_battery_level()
 	logger_detailed("Entering: %s", __FUNCTION__);
 	battery_level = -1;
 	write_command_to_serial_port("BAT\r\n");
-	//battery_level = -1;
 
 	//Clear out level send string
 	int i;
@@ -951,7 +987,7 @@ int get_battery_level()
 char* get_command(char* cmd)
 {
 	logger_detailed("Entering: %s", __FUNCTION__);
-	bzero((char*)&command_str[0], 16);
+	bzero((char*)&command_str[0], sizeof(command_str));
 	write_command_to_serial_port(cmd);
 	sleep(1);
 	return (char*)&command_str[0];
@@ -984,7 +1020,10 @@ void set_dvr_name(char* s)
 void set_assignable(char* s)
 {
 	logger_detailed("Entering: %s", __FUNCTION__);
-	strcpy(assignable, s);
+	if (s)
+	{
+		strcpy(assignable, s);
+	}
 }
 
 int available_minutes()
@@ -1185,7 +1224,7 @@ int ttymx_action(char* command)
 			else
 			{
 				write_command_to_serial_port("RCO\r\n");
-				return; // Ignore extra RCO commands
+				return 0; // Ignore extra RCO commands
 			}
 		}
 		recording = 1;
@@ -1211,7 +1250,7 @@ int ttymx_action(char* command)
 			{
 				logger_error("Stopping recording due to low disk space.");
 			}
-			//if(!stealth_on)
+
 			write_command_to_serial_port("VID\r\n");
 			recording = 0;
 			return -1;
@@ -1286,8 +1325,8 @@ int ttymx_action(char* command)
 		logger_info("EVENT: RCF requested: %d", (int)pid_find(ODI_CAPTURE));
 		if (recording_counter < 100 && RecSizeChkState != 0)
 		{
-			logger_info("Stop too quick. recording counter: %d", recording_counter);
-			return;
+			logger_error("%s:%d Stop too quick. recording counter: %d", __FUNCTION__, __LINE__, recording_counter);
+			return -1;	// PER GIAC
 		}
 		if (recording == 1)
 		{
@@ -1320,9 +1359,12 @@ int ttymx_action(char* command)
 			write_command_to_serial_port("RCF\r\n");
 			logger_error("Wrong state RCF STOP Recording -- recording is OFF");
 		}
+
 		// Reset capture pid only when not pre_event
 		if (pre_event == 0)
+		{
 			capture_pid = -1;
+		}
 		strcpy(current_file, "");
 		stealth_time_state_save = 0;
 		recording = 0;
@@ -1337,6 +1379,7 @@ int ttymx_action(char* command)
 		chargerIN = 1;
 		stealth_disable = 0;
 		stealth_time_state_save = 0;
+
 		if (write_command_to_serial_port("CHO\r\n"))
 		{
 			logger_error("Error writing ACK CHO to uC");
@@ -1379,7 +1422,6 @@ int ttymx_action(char* command)
 		}
 		chargerON = 0;
 		return 0;
-
 	}
 	else if (strcasecmp(command, "B0C") == 0)
 	{
@@ -1594,8 +1636,8 @@ int stealth_time_button()
 	{
 		return 0;
 	}
-	char buffer;
 
+	char buffer;
 	size_t bytes_read = 0;
 	int file_ptr = open(GPIO90_STATE_FILE, O_RDONLY);
 	bytes_read = read(file_ptr, &buffer, 1);
@@ -1624,6 +1666,7 @@ int stealth_time_action(int gpio_state)
 		statvfs(ODI_DATA, &stat_buf);
 		long_free_blk = stat_buf.f_bavail * stat_buf.f_bsize / 1024000;
 		long_data_size = stat_buf.f_blocks * stat_buf.f_bsize / 1024000;
+
 		// for free size get time 35MB per minute
 		logger_debug("action_gpio90: size=%u free=%u", long_data_size, long_free_blk);
 		float fminutes = (float)long_free_blk / (float)35;
@@ -1654,6 +1697,7 @@ int stealth_time_action(int gpio_state)
 		statvfs(ODI_DATA, &stat_buf);
 		long_free_blk = stat_buf.f_bavail * stat_buf.f_bsize / 1024000;
 		long_data_size = stat_buf.f_blocks * stat_buf.f_bsize / 1024000;
+
 		// for free size get time 35MB per minute
 		logger_debug("action_gpio90: size=%u free=%u", long_data_size, long_free_blk);
 		float fminutes = (float)long_free_blk / (float)35;
@@ -1681,7 +1725,7 @@ int stealth_time_action(int gpio_state)
 
 	if (camera_docked)
 	{
-		return;
+		return 1;	// PER GIAC
 	}
 
 	if (stealth_counter > 60 && gpio_state)
@@ -1740,8 +1784,8 @@ int snap_trace_button()
 	{
 		return 0;
 	}
-	char buffer;
 
+	char buffer;
 	size_t bytes_read = 0;
 	int file_ptr = open(GPIO101_STATE_FILE, O_RDONLY);
 	bytes_read = read(file_ptr, &buffer, 1);
@@ -1796,6 +1840,7 @@ int check_for_ACK()
 			ack_bop++;
 		}
 	}
+
 	if (ack_sto > 0)
 	{
 		if (ack_sto > 5)
@@ -1808,6 +1853,7 @@ int check_for_ACK()
 			ack_sto++;
 		}
 	}
+
 	if (ack_stf > 0)
 	{
 		if (ack_stf > 5)
@@ -1820,6 +1866,7 @@ int check_for_ACK()
 			ack_stf++;
 		}
 	}
+
 	if (ack_sso > 0)
 	{
 		if (ack_sso > 2)
@@ -1832,6 +1879,7 @@ int check_for_ACK()
 			ack_sso++;
 		}
 	}
+
 	if (ack_tio > 0)
 	{
 		if (ack_tio > 2)
@@ -1879,12 +1927,8 @@ int parseXML()
 	if (getField(xmlParent, (char*)"remotem_broadcast_ip", broadcast_ip))
 	{
 		//TODO put proper code to screen IPs field
-		//        if (strlen(str) <= 15 && strlen(str) > 8) {
-		//            strcpy(broadcast_ip, str);
-		//        } else {
 		logger_error("Invalid remotem_broadcast_ip in config xml");
 		ok = -1;
-		//        }
 	}
 
 	if (getField(xmlParent, (char*)"snap_trace", str))
@@ -1996,6 +2040,7 @@ int parseXML()
 	return ok;
 }
 
+// NOTE: Similar method needed for gst_capture logs
 void checkLogs()
 {
 	char str_file_path[100];
@@ -2074,7 +2119,6 @@ void checkLogs()
 		{
 			break;
 		}
-
 		logger_info("Removing log file: %lu, %s", free_space, log_files[c]);
 		remove(log_files[c++]);
 	}
@@ -2125,6 +2169,7 @@ int reset_config()
 	fprintf(fp, "   </config>\n</config-metadata>\n");
 	fflush(fp);
 	fclose(fp);
+
 	return 0;
 }
 
@@ -2295,7 +2340,7 @@ void cloud_main_task()
 					}
 					else
 					{
-						logger_cloud("Logs was pushed less than 24h ago");
+						logger_cloud("Logs were pushed less than 24h ago");
 					}
 					sleep(DEFAUTL_AWS_SLEEP * 6);  //Sleep more if no more file
 					break;
@@ -2335,6 +2380,8 @@ void cloud_main_task()
 
 int main(int argc, char* argv[])
 {
+	logger_detailed("Entering: %s", __FUNCTION__);
+
 	int stealth_time_state;
 	int snap_trace_state;
 	int check_log_cnt = 0;
@@ -2342,8 +2389,6 @@ int main(int argc, char* argv[])
 	int power_saver = 1;
 	int pre_event_record_ready = 0;
 	int pre_event_started = -1;
-
-	logger_detailed("Entering: %s", __FUNCTION__);
 
 #ifdef L_WATCHDOG
 	pthread_t mon_id = -1;
@@ -2415,6 +2460,7 @@ int main(int argc, char* argv[])
 		}
 		sleep(1);
 	}
+
 	// Dump HW version to file /odi/log/hw_version.txt to use for upgrade protection
 	char cmd_buf[128];
 	sprintf((char*)&cmd_buf[0], "echo \"%s \" > /odi/log/hw_version.txt", &hw_version);
@@ -2488,7 +2534,8 @@ int main(int argc, char* argv[])
 	initUDP(version_str, dvr_id, api_version, broadcast_ip);
 
 	memset(serial_raw_read_buf, 0, COMM_BUFFER_SIZE + 1);
-	if (pthread_create(&tty_read_tid, NULL, serial_raw_read, NULL))
+
+	if (pthread_create(&tty_read_tid, NULL, &serial_raw_read, NULL))
 	{
 		logger_error("monitor main:cannot create read thread");
 		return 1;
@@ -2531,7 +2578,7 @@ int main(int argc, char* argv[])
 
 	if (timer_id == -1)
 	{
-		result = pthread_create(&timer_id, NULL, timer_task, NULL);
+		result = pthread_create(&timer_id, NULL, &timer_task, NULL);
 		if (result == 0)
 		{
 			logger_info("Starting timer thread.");
@@ -2562,7 +2609,7 @@ int main(int argc, char* argv[])
 
 	if (sub_id == -1)
 	{
-		result = pthread_create(&sub_id, NULL, mqtt_sub_main_task, NULL);
+		result = pthread_create(&sub_id, NULL, &mqtt_sub_main_task, NULL);
 		if (result == 0)
 		{
 			logger_info("Starting mqtt_sub_main_task thread.");
@@ -2575,7 +2622,7 @@ int main(int argc, char* argv[])
 
 	if (pub_id == -1)
 	{
-		result = pthread_create(&pub_id, NULL, mqtt_pub_main_task, NULL);
+		result = pthread_create(&pub_id, NULL, &mqtt_pub_main_task, NULL);
 		if (result == 0)
 		{
 			logger_info("Starting mqtt_pub_main_task thread.");
@@ -2675,7 +2722,7 @@ int main(int argc, char* argv[])
 						logger_info("EVENT RECORD STOP [SPC]");
 						system("echo 3 > /odi/log/stopreason");
 					}
-					//if(!stealth_on)
+
 					write_command_to_serial_port("VID\r\n");
 					remove("/odi/log/recording");
 					recording = 0;
@@ -2848,7 +2895,10 @@ int main(int argc, char* argv[])
 	if (reset_config_pressed)
 	{
 		write_command_to_serial_port("VID\r\n");
-		for (i = 0; i<5; i++) sleep(1);
+		for (i = 0; i < 5; i++)
+		{
+			sleep(1);
+		}
 		write_command_to_serial_port("BOR\r\n"); //Change to fix 10675
 		reset_config();
 
@@ -2865,7 +2915,5 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	//    write_command_to_serial_port("RST\r\n");
-	//    sleep(1);
 	system("sync;reboot");
 }

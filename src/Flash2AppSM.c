@@ -209,7 +209,7 @@ FLASH2_RESULT Flash2AppSMGenerateHashClose(SM_MEDIA_HANDLE h, SM_MEDIA_HASH meta
 			fprintf(stderr, "[Flash2AppSMGenerateHashClose] error because hash buffer is too small\n");
 			return FLASH2_FAILURE;
 		}
-		is_no_err = EVP_SignFinal(&h->md_ctx, metadata->data, metadata_len, h->pkey);
+		is_no_err = EVP_SignFinal(&h->md_ctx, metadata->data, (unsigned int*)metadata_len, h->pkey);
 		if (1 == is_no_err)
 		{
 			ret = FLASH2_SUCCESS;
@@ -486,7 +486,7 @@ static FLASH2_RESULT Flash2AppSMHashFile(char* keyf, unsigned char* name, void* 
 		fprintf(stderr, "[Flash2AppSMHashFile] Argument name, passed to function was NULL\n");
 		return FLASH2_FAILURE;
 	}
-	f = open(name, O_RDONLY);
+	f = open((const char*)name, O_RDONLY);
 	if (f <= 0)
 	{
 		perror("[Flash2AppSMHashFile] Error in open()\n");
@@ -521,7 +521,7 @@ static FLASH2_RESULT Flash2AppSMHashFile(char* keyf, unsigned char* name, void* 
 		}
 	}
 	close(f);
-	return Flash2AppSMGenerateHashClose(h, sig_buf, sig_len);
+	return Flash2AppSMGenerateHashClose(h, (SM_MEDIA_HASH)sig_buf, sig_len);
 }
 /*
 * vim:ft=c:fdm=marker:ff=unix:expandtab: tabstop=4: shiftwidth=4: autoindent: smartindent:

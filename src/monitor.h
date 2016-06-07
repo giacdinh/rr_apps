@@ -1,3 +1,6 @@
+#ifndef _MONITOR_H
+#define _MONITOR_H
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +18,32 @@
 #include <pthread.h>
 #include <sys/statvfs.h>
 #include <linux/input.h>
+
+#include "ezxml.h"
+
+#include <vector>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void logger_remotem(char* str_log, ...);
+void logger_error(char* str_log, ...);
+void logger_info(char* str_log, ...);
+void logger_detailed(char* str_log, ...);
+char* get_dvr_name();
+void set_dvr_name(char* s);
+void set_assignable(char* s);
+char* get_assignable();
+char* get_hw_version();
+int write_command_to_serial_port(char* comm);
+char* get_battery_level_string();
+int get_battery_level();
+void set_planb_size(int sz);
+char* get_command(char* cmd);
+int check_cloud_flag();
+int get_eth0_state();
+int getField(ezxml_t xmlParent, char* fieldname, char* dest);
 
 #define ETH0_CARRIER_FILE "/sys/class/net/eth0/carrier"
 #define GPIO90_STATE_FILE "/sys/class/gpio/gpio90/value"
@@ -95,6 +124,7 @@ char serial_raw_read_buf[COMM_BUFFER_SIZE + 1];
 
 int serial_raw_read_cur = 0;
 int serial_raw_read_last = 0; // amt avail == cur - last read
+
 int serial_port_fd = -1;
 pthread_t tty_read_tid;
 pthread_mutex_t tty_lock;
@@ -108,7 +138,6 @@ char hw_version[8];
 char assignable[8];
 char dvr_name[32];
 
-// DENCZEK - removed dynamic memory allocation used in logging
 #define TIME_BUFFER_SIZE 2000
 #define LOGGER_BUFFER_SIZE 2000
 
@@ -117,3 +146,18 @@ char debug_buffer[LOGGER_BUFFER_SIZE];
 char error_buffer[LOGGER_BUFFER_SIZE];
 char pause_time_buffer[TIME_BUFFER_SIZE];
 
+
+
+
+std::vector<unsigned char> m_vecSerialMessages;
+
+
+
+
+
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

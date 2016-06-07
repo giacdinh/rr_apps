@@ -21,19 +21,19 @@ enum
 }
 BV_RESPONSE_CODE;
 
-int HTTP_Status_Handler(char *, const char *);
-const char * process_json_data(char *ptr, char * search_key, int * intval);
+int HTTP_Status_Handler(char*, const char*);
+const char * process_json_data(char* ptr, char* search_key, int* intval);
 void logger_cloud(char* str_log, ...);
-int RefreshToken(char *main_token, char *refresh_token);
-//char *user_name;
-//char *password;
-void * mqtt_sub_main_task();
-void * mqtt_pub_main_task();
+int RefreshToken(char* main_token, char* refresh_token);
+
+void* mqtt_sub_main_task(void* thread_func_param);
+void* mqtt_pub_main_task(void* thread_func_param);
 void cloud_main_task();
-char *p_main_token;
 int checkhost();
 int logfile_for_cloud();
 int check_log_push_time();
+
+char* p_main_token;
 
 #define BV_SUCCESS	1
 #define BV_FAILURE	0
@@ -88,6 +88,10 @@ extern int cloud_init;
 #define CLOUD_AUTHORIZE_TIME	"Authorization: Bearer %s"
 #define CLOUD_ACCEPT		"Accept: application/json"
 #define CLOUD_DEVICE		"Device: BodyVision"
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

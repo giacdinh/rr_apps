@@ -499,7 +499,7 @@ int mqtt_authentication_refresh()
     return MQTT_SUCCESS;
 }
 
-void *mqtt_sub_main_task()
+void* mqtt_sub_main_task(void* thread_func_param)
 {
     char *p_new_dev, new_dev[32];
     char *p_dev_id, dev_id[32];
