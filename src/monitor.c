@@ -342,7 +342,7 @@ static void* serial_raw_read(void* thread_func_param)
 	while (thread_run)
 	{
 		// for now just a test to setup long 5 seconds timeout
-		if (serial_raw_read_last == serial_raw_read_cur)
+		if (serial_raw_read_last = serial_raw_read_cur)
 		{
 			serial_raw_read_last = serial_raw_read_cur = 0;
 		}
@@ -737,7 +737,7 @@ int process_eth0_carrier_state_change(int sent_udp)
 	{
 		if (chargerON)
 		{
-			if (-1 != (int)pid_find(ODI_CAPTURE))
+			if (-1 != capture_pid)
 			{
 				logger_info("Stopping recording because eth0 came up: %d", kill(capture_pid, SIGINT));
 				logger_info("EVENT RECORD STOP [ETH]");
@@ -916,6 +916,7 @@ pid_t pid_find(char* process_name)
 		free(name);
 
 		//logger_debug("pid_find: name=%s, pid=%d",process_name, pid);
+		capture_pid = pid;
 		return (pid_t)pid;
 	}
 	return -1;

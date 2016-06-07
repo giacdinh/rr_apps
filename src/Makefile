@@ -51,7 +51,7 @@ monitor: monitor.c ezxml.o monitor.h mongoose.o remotem.o udp_util.o BVcloud.o \
 	FileUpload.o FileDownload.o GetSignedURL.o GetToken.o Parse_Json.o UpdateStatus.o GetTime.o \
 	RefreshToken.o mqtt_common.o mqtt_sub.o mqtt_sub_init.o mqtt_token.o mqtt_pub.o Configupdate.o \
 	LogGetSignedURL.o LogUpload.o
-	$(CPP) $(CCFLAGS) -o monitor -D_FILE_OFFSET_BITS=64 $(INCLUDES) monitor.c mongoose.o \
+	$(CPP) $(CFLAGS) $(CCFLAGS) -o monitor -D_FILE_OFFSET_BITS=64 $(INCLUDES) monitor.c mongoose.o \
 		remotem.o udp_util.o ezxml.o BVcloud.o FileUpload.o FileDownload.o GetSignedURL.o GetTime.o \
 		GetToken.o Parse_Json.o  UpdateStatus.o RefreshToken.o Configupdate.o \
 		mqtt_sub.o mqtt_common.o mqtt_sub_init.o mqtt_token.o mqtt_pub.o \
