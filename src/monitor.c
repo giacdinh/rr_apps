@@ -1085,35 +1085,35 @@ void start_capture(int cause)
 	int i;
 	time_t now = time(NULL);
 	struct tm ts;
-	char ymd[20];
+	char ymd[20], cmd[256];
 	strftime(ymd, 20, "%Y%m%d", localtime_r(&now, &ts));
 
-	char cmd[256];
-	sprintf(cmd, "GST_DEBUG_NO_COLOR=1 GST_DEBUG_FILE=/odi/log/gst_capture_%s.log \
-		GST_REGISTRY=/odi/conf/gst_registry GST_DEBUG=2 %s/%s >> %s/%s_%s 2>&1 &",
-		ymd, ODI_BIN, ODI_CAPTURE, ODI_LOG, ODI_CAPTURE, ymd);
+	if(CAPTURE_PRE_EVENT != cause)
+	{
+		//char cmd[256];
+		sprintf(cmd, "GST_DEBUG_NO_COLOR=1 GST_DEBUG_FILE=/odi/log/gst_capture_%s.log \
+			GST_REGISTRY=/odi/conf/gst_registry GST_DEBUG=2 %s/%s >> %s/%s_%s.log 2>&1 &",
+			ymd, ODI_BIN, ODI_CAPTURE, ODI_LOG, ODI_CAPTURE, ymd);
 
-	system(cmd);
-	logger_info("Capture command: %s", cmd);
+		system(cmd);
+		logger_info("Capture command: %s", cmd);
+	}
 
 	capture_pid = -1;
-	if(pre_event == 0)
-	{
-        	while (1)
+        while (1)
+        {
+        	if(access("/tmp/record_ready", 0) == 0)
         	{
-        		if(access("/tmp/record_ready", 0) == 0)
-        		{
-        			// If ready to record, remove flag for next time
-        			remove("/tmp/record_ready");
-        			break;
-        		}
-        		else
-        		{
-        			logger_info("Waiting for gst_capture launch ready: %d", i++);
-        			sleep(1);
-        		}
-		}
-        }
+        		// If ready to record, remove flag for next time
+        		remove("/tmp/record_ready");
+        		break;
+        	}
+        	else
+        	{
+        		logger_info("Waiting for gst_capture launch ready: %d", i++);
+        		sleep(1);
+        	}
+	}
 
 	current_found = check_current_file();
 	if (!current_found)
@@ -1320,6 +1320,7 @@ int ttymx_action(char* command)
 			}
 			logger_info("%s:%d Start main record in pre_event case, sending SIGCONT to gst_capture", __FUNCTION__, __LINE__);
 			system("killall -SIGCONT gst_capture > /dev/null 2>&1");
+			start_capture(CAPTURE_PRE_EVENT);
 		}
 		else
 		{
